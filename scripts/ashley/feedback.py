@@ -57,13 +57,14 @@ class Feedback(object):
         self.iters:int       = iters      # Number of files (steps) to compare
         self.tempstep:float  = 20.0       # Default step size between temperatures to examine feeback effects
 
-        self.k:float       = None       # ANALYTICAL_KEFF
-        self.kerr:float    = None       # ANALYTICAL_KEFF Error
-        self.cr:float      = None       # CONVERSION_RATIO
-        self.crerr:float   = None       # CONVERSION_RATIO Error
-        self.tempsK:list   = [0]*iters  # Salt temperatures to compare [K]
-        self.deckdirs:list = [0]*iters  # directory names
-        self.tests:list    = [0]*iters  # tests
+        self.k:float         = None       # ANALYTICAL_KEFF
+        self.kerr:float      = None       # ANALYTICAL_KEFF Error
+        self.cr:float        = None       # CONVERSION_RATIO
+        self.crerr:float     = None       # CONVERSION_RATIO Error
+        self.tempsK:list     = [0]*iters  # Salt temperatures to compare [K]
+        self.deckdirs:list   = [0]*iters  # directory names
+        self.qsubnames:list  = [0]*iters  # run.sh file names
+        #self.tests:list      = [0][0]*iters  # tests
 
     def do_things(self):
         if self.dotemp:
@@ -71,11 +72,13 @@ class Feedback(object):
             for i in range(self.iters):
                 self.tempsK[i]=self.tempstart+self.tempstep*i
                 self.deckdirs[i]="lat{}".format(self.tempsK[i])
-                os.system("mkdir " + self.deckdirs[i])
-                self.tests[i]=Lattice()
-                self.tests[i].tempK=self.tempsK[i]
-                self.tests[i].deck_path=os.path.expanduser("~/git/salt-management-DMSR/ashley/"+self.deckdirs[i])
-
+                self.qsubnames[i]="run{}.sh".format(i)
+#                os.system("mkdir " + self.deckdirs[i])
+                test2=Lattice()
+                test2.tempK=self.tempsK[i]
+                test2.deck_path=os.path.expanduser("~/git/lattice-LEU-MSR/scripts/ashley/"+self.deckdirs[i])
+                test2.qsub_path=os.path.expanduser("~/git/lattice-LEU-MSR/scripts/"+self.qsubnames[i])
+                self.results=test2.for_feedbacks()
 """
 
 #add: if salt, if enr, if density, if l, if sf, etc...
@@ -94,6 +97,7 @@ class Feedback(object):
 
 #-----------------------------------------------------
 if __name__ == '__main__':
-    print("This module handles feedback effects.")
+#    print("This module handles feedback effects.")
     testing = Feedback()
     testing.do_things()
+ 

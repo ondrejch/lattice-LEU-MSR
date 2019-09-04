@@ -59,8 +59,8 @@ class Lattice(object):
         self.histories:int = 5000       # Neutron histories per cycle
         self.ompcores:int  = 8          # OMP core count
         self.deck_name:str = 'lat'      # Serpent input file name
-        self.deck_path:str = os.path.expanduser('~/ashleys_salt_management/lat_test')        # Where to run the lattice deck
-        self.qsub_path:str = os.path.expanduser('~/run.sh')  # Full path to the qsub script
+        self.deck_path:str = os.path.expanduser('~/git/lattice-LEU-MSR/scripts/ashley')        # Where to run the lattice deck
+        self.qsub_path:str = os.path.expanduser('~/git/lattice-LEU-MSR/scripts/run.sh')  # Full path to the qsub script
         self.main_path:str = os.path.expanduser('~/L/')+salt # Main path
         self.boron_graphite:float = 2e-06     # 2ppm boron in graphite
         if my_debug:
@@ -234,8 +234,8 @@ rm {self.deck_name}.out
         #self.ompcores=32
         self.save_qsub_file()
         self.save_deck()
-        #self.run_deck()
-        #self.get_calculated_values()
+        self.run_deck()
+        self.get_calculated_values()
 
 
 # ------------------------------------------------------------
