@@ -12,31 +12,9 @@ import mapscan
 from salts import Salt
 import os
 import time
-"""
-
-#Questions
-#where is the lattice pitch being used? its not a hexagonal array of fuel things
-#but is it chemical? how
+import matplotlib.pyplot as plt
 
 
-test=Lattice() #makes default lattice
-#print(test.s) #prints the salt that is in the lattice
-#print(test.get_deck()) #prints the cell cards for the lattice in serpent
-
-test.all() #makes input files, saves them, runs them, and gets data
-
-print(test.k)
-keff=test.k
-kefferr=test.kerr
-conversion_ratio=test.cr
-crerr=test.crerr
-
-
-test.cleanup()
-
-"""
-
-#%%
 class Feedback(object):
     'Determine feeback effects for a particular lattice'
     def __init__(self, salt:str='flibe', iters:int=11, enr:float=0.15, temp:bool=True, density:bool=False, sf:float=0.1, l:float=20.0):
@@ -48,50 +26,71 @@ class Feedback(object):
         'Constructor with default values'
         self.l:float         = l          # Hex lattice size [cm]
         self.sf:float        = sf         # Fuel salt fraction
-#        self.r:float         = self.r()   # Diameter of the fuel salt channel [cm]
         self.salt_name:str   = salt       # Salt identifier
-#        self.s               = Salt(self.salt_formula, enr) # Salt used
         self.case:bool       = density    # Doppler only (False) or Doppler and Density (True)
         self.dotemp:bool     = temp       # find feedback effects of temperature (True) or do not (False)
-        self.tempbase:float  = 900.0      # Default middle of range at 900K
-        self.iters:int       = iters      # Number of files (steps) to compare
+        self.tempstart:float = 900.0      # Default start of the range at 900K
+#add option to choose temperature start
         self.tempstep:float  = 20.0       # Default step size between temperatures to examine feeback effects
+        self.iters:int       = iters      # Number of files (steps) to compare
+        self.tempend:float   = self.tempstart+self.tempstep*iters # End of Temp Range
+        self.mainpath:str    ="~/git/lattice-LEU-MSR/scripts/ashley/" #change so that it gets whatever current directory
 
-        self.k:float         = None       # ANALYTICAL_KEFF
-        self.kerr:float      = None       # ANALYTICAL_KEFF Error
-        self.cr:float        = None       # CONVERSION_RATIO
-        self.crerr:float     = None       # CONVERSION_RATIO Error
-        self.tempsK:list     = [0]*iters  # Salt temperatures to compare [K]
-        self.deckdirs:list   = [0]*iters  # directory names
-        self.qsubnames:list  = [0]*iters  # run.sh file names
-        #self.tests:list      = [0][0]*iters  # tests
+        self.k:float         = None          # ANALYTICAL_KEFF
+        self.kerr:float      = None          # ANALYTICAL_KEFF Error
+        self.cr:float        = None          # CONVERSION_RATIO
+        self.crerr:float     = None          # CONVERSION_RATIO Error
 
-    def do_things(self):
+        self.tempsK:list     = [0]*iters     # Salt temperatures to compare [K]
+        self.deckdirs:list   = [0]*iters     # directory names
+        self.qsubnames:list  = [0]*iters     # run.sh file names
+        self.lattice:obj     = [0]*iters     # Lattice()
+        self.keffs:list      = [0]*iters     # k-effective values
+        self.kerrs:list      = [0]*iters     # errors in k-effective values
+        self.crs:list        = [0]*iters     # conversion ratios
+        self.crerrs:list     = [0]*iters     # errors in conversion ratios
+        self.datapath:str    = [0]           # paths for data files based on options (T/F) & values (900K)
+
+    def run(self):
         if self.dotemp:
-            self.tempstart=self.tempbase - self.iters*self.tempstep/2
+            self.datapath="tempfeedbacks{:.0f}K_{:.0f}K.csv".format(self.tempstart,self.tempend)
+            os.system("rm "+self.mainpath+"data/"+self.datapath)
+            with open(self.datapath,"w") as df:
+                df.write("Salt: {},Temp Range: {}K - {}K\n".format(self.salt_name,self.tempstart,self.tempend))
+                df.write("K-Effective, Error, Conversation Ratio, Error\n")
             for i in range(self.iters):
                 self.tempsK[i]=self.tempstart+self.tempstep*i
                 self.deckdirs[i]="lat{}".format(self.tempsK[i])
                 self.qsubnames[i]="run{}.sh".format(i)
-#                os.system("mkdir " + self.deckdirs[i])
-                test2=Lattice()
-                test2.tempK=self.tempsK[i]
-                test2.deck_path=os.path.expanduser("~/git/lattice-LEU-MSR/scripts/ashley/"+self.deckdirs[i])
-                test2.qsub_path=os.path.expanduser("~/git/lattice-LEU-MSR/scripts/"+self.qsubnames[i])
-                self.results=test2.for_feedbacks()
-"""
+                self.lattice[i]=Lattice()
+                self.lattice[i].tempK=self.tempsK[i]
+                self.lattice[i].deck_path=os.path.expanduser(self.mainpath+self.deckdirs[i])
+                self.lattice[i].qsub_path=os.path.expanduser(self.mainpath+self.qsubnames[i])
+                self.lattice[i].for_feedbacks() #writes and saves all of the necessary files, submits to cluster
+
+    def getdata(self):
+            for i in range(self.iters):
+                self.lattice[i].get_calculated_values()
+                self.keffs[i]=self.lattice[i].k
+                self.kerrs[i]=self.lattice[i].kerr
+                self.crs[i]=self.lattice[i].cr
+                self.crerrs[i]=self.lattice[i].crerr
+                with open(self.datapath,"a+") as df:
+                    df.write("{},{},{},{}\n".format(self.keffs[i],self.kerrs[i],self.crs[i],self.crerrs[i]))
+                self.lattice[i].cleanup()
+            os.system("mkdir data; mv "+self.datapath+" "+self.mainpath+"data/"+self.datapath)
+
+
+
+
+#     def plotdata(self):
+#            for i in range(self.iters):
+
+
+
+
 
 #add: if salt, if enr, if density, if l, if sf, etc...
-
-    def call_Lattice(self):
-        print(Lattice(self).k)          #check correctness
-        self.k=Lattice(self).k          #k-effective value
-        self.kerr=Lattice(self).kerr    #error in k-effective
-        self.cr=Lattice(self).cr        #conversion ratio
-        self.crerr=Lattice(self).crerr  #error in conversion ratio
-        Lattice(self).cleanup()
-
-"""
 
 
 
@@ -99,5 +98,6 @@ class Feedback(object):
 if __name__ == '__main__':
 #    print("This module handles feedback effects.")
     testing = Feedback()
-    testing.do_things()
- 
+    testing.run()
+    testing.getdata()
+#    print(testing.keffs)

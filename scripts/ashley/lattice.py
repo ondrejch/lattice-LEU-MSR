@@ -235,7 +235,7 @@ rm {self.deck_name}.out
         self.save_qsub_file()
         self.save_deck()
         self.run_deck()
-        self.get_calculated_values()
+#        self.get_calculated_values()
 
 
 # ------------------------------------------------------------
