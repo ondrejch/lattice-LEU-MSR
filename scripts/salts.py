@@ -6,7 +6,6 @@
 # 2019-08-06
 # GNU/GPL
 
-import math
 from collections import namedtuple
 import molmass          # https://pypi.org/project/molmass/
 import copy
@@ -14,13 +13,25 @@ import copy
 my_debug = False
 
 MOLARVOLUMES = { # Melt composition molar volumes at 600 and 800 degC
-    'LiF' : (13.411, 14.142),
-    'BeF2': (23.6, 24.4),
+    'LiF' : (13.46, 14.19), # from ORNL/TM-2006/12 and ORNL-3913
     'NaF' : (19.08, 20.2),
-    'KF'  : (28.1, 30.0),
+    'KF'  : (28.1,  30.0),
+    'RbF' : (33.9,  36.1),
+    'CsF' : (40.2,  43.1),
+    'BeF2': (23.6,  24.4),
+    'MgF2': (22.4,  23.4),
+    'SrF2': (30.4,  31.6),
+    'BaF2': (35.8,  37.2),
+    'CaF2': (27.5,  28.3),
+    'AlF3': (26.9,  30.7),
+    'YF3' : (34.6,  35.5),
+    'LaF3': (37.7,  38.7),
+    'CeF3': (36.3,  37.6),
+    'PrF3': (36.6,  37.6),
+    'SmF3': (39.0,  39.8),
     'ZrF4': (47.0,  50.0),
-    'ThF4': (46.43, 47.59),
-    'UF4' : (46.43, 47.59)}
+    'ThF4': (46.6,  47.7),
+    'UF4' : (45.5,  46.7)}
 
 class MeltPart(object):
     'Storage for salt density fit calculation'
@@ -57,7 +68,7 @@ class Salt(object):
         self.formula:str    = f         # Chemical formula for a salt
         self.enr:float      = e         # Uranium enrichment
         self.Li7dep:float   = 0.99995   # Li-7 depletion level
-        self.mol_mass:foat  = None      # Molar mass of the salt
+        self.mol_mass:float = None      # Molar mass of the salt
         # Salt isotopic composition - isotopes repeat per melt parts
         self.isolist = []   # For internal processing use only
         self.SaltIso = namedtuple("SaltIso", "Z A atoms amass wfrac molefract")
@@ -193,6 +204,8 @@ class Salt(object):
 
     def densityC(self, tempC:float) -> float:
         'Returns density [g/cm3] based on temperature in degC'
+        if 'UCl' in self.formula:   # Chlorides handled separately, no molar volumes available
+            return self.chloride_density(tempC)
         if tempC < 600 or tempC > 800:
             print("Warning: temperature data is interpolated between 600 and 800C.")
         if not self.density_a or not self.density_b:
