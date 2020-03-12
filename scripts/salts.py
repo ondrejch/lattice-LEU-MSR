@@ -9,6 +9,7 @@
 from collections import namedtuple
 import molmass          # https://pypi.org/project/molmass/
 import copy
+import numpy as np
 
 my_debug = False
 
@@ -211,6 +212,50 @@ class Salt(object):
         if not self.density_a or not self.density_b:
             self._fit_density()     # Necessary to prevent infinite recursion..
         return self.density_a * tempC + self.density_b
+    def chloride_density(self, tempC:float) -> float:
+        '''Chlorides are handled separately, since there is no molar volume data for chlorides.
+        If chlorine is not a natural mixture, set enrichment first, after defining the salt, 
+        by self.set_chlorine_37Cl_fraction()
+        Returns salt density, thus far works only for (1-x)NaCl-xUCl3, such as 55%NaCl+45%UCl3''' 
+        (mNaCl,mUCl3) = self.formula.split('+')    # Separate melt components
+        (wNaCl,mform) = mNaCl.split('%')           # Separate component pct. fractions
+        if mform != 'NaCl':
+            raise ValueError("First component has to be NaCl: ", self.formula)
+        (wUCl3,mform) = mUCl3.split('%')           # Separate component pct. fractions
+        if mform != 'UCl3':
+            raise ValueError("Second component has to be UCl3: ", self.formula)
+        wNaCl = float(wNaCl)/100.0
+        wUCl3 = float(wUCl3)/100.0
+        if abs(wNaCl+wUCl3-1.0) > 0.1:
+            raise ValueError("Component mixture have to add to 100%: ", self.formula)
+        tempK = tempC + 273.15
+        #print('x=',wUCl3)
+        return self.chloride_density_interpolation(wUCl3, tempK)
+
+    def chloride_density_interpolation(self, x:float, tempK:float) -> float:
+        '''Interpolation based on Table 572, page 1135 of https://aip.scitation.org/doi/pdf/10.1063/1.555527
+        Molten salts: Volume 4, part 2, chlorides and mixtures—electrical conductance, density,
+        viscosity, and surface tension data'''
+        x = x*100.0                             # fraction -> %
+        if x<1.59 or x>53.81:
+            raise ValueError("UCl3 fraction has to be 1.6 to 53.8% :", x)
+        # rho = a + b/1e3  T
+        xmol = [1.6, 8.7, 24.7, 53.8]           # mol% of UCl3 in NaCl+UCl3
+        a    = [2.2075, 2.7796, 4.2900, 6.6390] 
+        b    = [-0.5655, -0.6828, -1.5903, -3.0582]
+        ia = np.interp(x, xmol, a)
+        ib = np.interp(x, xmol, b)
+        #print(ia,ib)
+        return ia + ib*1e-3*tempK
+
+    def chloride_density_equation_BoLiShengDai(self, x:float, tempK:float) -> float:
+        '''Density calcualtion using Equation 4 from https://doi.org/10.1016/j.molliq.2019.112184
+        x is the UCl3 fraction '''
+        rho = 2.1445 + 5.3997*x - 1.8586*(x**2) - 9.2338*(x**3) + 6.1912*(x**4) + \
+        (-5.4859e-4 - 1.2053e-4*x - 5.5020e-3*x**2 + 1.1547e-2*x**3 - 6.8864e-3*x**4)*tempK
+        return rho
+
+ #   def _check_chloride_interpolations:
 
     def nice_name(self)->str:
         'Return salt name with spaces around + sign'
