@@ -132,7 +132,7 @@ class Salt(object):
                         Z     = ele.protons
                         amass = ele.isotopes[A].mass
                         wfrac = ele.isotopes[A].abundance
-                        if wfrac > 0.0:         
+                        if wfrac > 0.0:
                             isotuple = self.SaltIso(Z, A, n_atoms, amass, wfrac, mfract)
                             self.isolist.append(isotuple)
         self.isolist.sort()                     # Looks nicer sorted
@@ -217,9 +217,9 @@ class Salt(object):
 
     def chloride_density(self, tempC:float) -> float:
         '''Chlorides are handled separately, since there is no molar volume data for chlorides.
-        If chlorine is not a natural mixture, set enrichment first, after defining the salt, 
+        If chlorine is not a natural mixture, set enrichment first, after defining the salt,
         by self.set_chlorine_37Cl_fraction()
-        Returns salt density, thus far works only for (1-x)NaCl-xUCl3, such as 55%NaCl+45%UCl3''' 
+        Returns salt density, thus far works only for (1-x)NaCl-xUCl3, such as 55%NaCl+45%UCl3'''
         (mNaCl,mUCl3) = self.formula.split('+')    # Separate melt components
         (wNaCl,mform) = mNaCl.split('%')           # Separate component pct. fractions
         if mform != 'NaCl':
@@ -244,7 +244,7 @@ class Salt(object):
             raise ValueError("UCl3 fraction has to be 1.6 to 53.8% :", x)
         # rho = a + b/1e3  T
         xmol = [1.6, 8.7, 24.7, 53.8]           # mol% of UCl3 in NaCl+UCl3
-        a    = [2.2075, 2.7796, 4.2900, 6.6390] 
+        a    = [2.2075, 2.7796, 4.2900, 6.6390]
         b    = [-0.5655, -0.6828, -1.5903, -3.0582]
         ia = np.interp(x, xmol, a)
         ib = np.interp(x, xmol, b)
@@ -258,20 +258,34 @@ class Salt(object):
         (-5.4859e-4 - 1.2053e-4*x - 5.5020e-3*x**2 + 1.1547e-2*x**3 - 6.8864e-3*x**4)*tempK
         return rho
 
- #   def _check_chloride_interpolations:
+#    def _check_chloride_interpolations(self):
+#        'Checks different density interpolations, do not use'
+#        xmol = [1.6, 8.7, 24.7, 53.8]           # mol% of UCl3 in NaCl+UCl3
+#        xmol = np.arange(1.6,53.8,0.2)
+#        temps= np.arange(900,1300,5)               # T[K]
+#        f1=open('~/tmp/datafile', 'w')
+#        for x in xmol:
+#            for t in temps:
+#                xfrc = x/100.0                  # mol% -> mol fraction
+#                rho1 = self.chloride_density_interpolation(xfrc,t)
+#                rho2 = self.chloride_density_equation_BoLiShengDai(xfrc,t)
+#                rhodiff = 2.0*(rho2-rho1)/(rho1+rho2)
+#                print("%4.1f %6.0f  %6.5f %6.5f %6.3f"%(x,t,rho1,rho2,rhodiff*100.0), file=f1)
+#            print(file=f1)
+#        f1.close()
 
     def nice_name(self)->str:
         'Return salt name with spaces around + sign'
-        return self.formula.replace('+',' + ')        
+        return self.formula.replace('+',' + ')
 
     def serpent_mat(self, tempK:float=900, lib="09c", rgb:str="240 30 30"):
         'Returns Serpent deck for the salt material'
         if not self.wflist:         # Generate list of isotopic weight fractions
             self._isotopic_fractions()
-        if my_debug:                # Check uranium enrichment 
+        if my_debug:                # Check uranium enrichment
             u= 0.0
-            for w in self.wflist: 
-                if w.Z == 92: 
+            for w in self.wflist:
+                if w.Z == 92:
                     u += w.wf
             for w in self.wflist:
                 if w.Z == 92:
