@@ -65,6 +65,8 @@ class Salt(object):
             f = f.strip().replace(" ", "")
         except:
             raise ValueError("Formula " + self.formula + " error")
+        if e<0 or e>1.0:
+            raise ValueError("Enrichment has to be 0-1: ", e)
 
         self.formula:str    = f         # Chemical formula for a salt
         self.enr:float      = e         # Uranium enrichment
@@ -212,6 +214,7 @@ class Salt(object):
         if not self.density_a or not self.density_b:
             self._fit_density()     # Necessary to prevent infinite recursion..
         return self.density_a * tempC + self.density_b
+
     def chloride_density(self, tempC:float) -> float:
         '''Chlorides are handled separately, since there is no molar volume data for chlorides.
         If chlorine is not a natural mixture, set enrichment first, after defining the salt, 
