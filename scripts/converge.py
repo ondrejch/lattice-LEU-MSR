@@ -6,15 +6,11 @@
 # 2019-08-16
 # GNU/GPL
 
-import math
-import numpy as np
-import matplotlib.pyplot as plt
-from collections import namedtuple
-import threading
-import sys
 import os
 import shutil
 import time
+import matplotlib.pyplot as plt
+from collections import namedtuple
 
 from lattice import Lattice
 
@@ -54,7 +50,7 @@ class Converge(object):
         'Pretty printing'
         result = '''Convergence for lattice with %s, sf: %5.3f, l: %5.3f cm
 Iteration boudaries %5.4f %5.4f, max iters: %d''' % \
-        (self.salt, self.sf, self.l, self.enr_min, self.enr_max, self.iter_max)
+            (self.salt, self.sf, self.l, self.enr_min, self.enr_max, self.iter_max)
         if self.rholist:
             result += '\nList of rho(enr) found during convergece:'
             for r in self.rholist:
@@ -80,7 +76,7 @@ Iteration boudaries %5.4f %5.4f, max iters: %d''' % \
             lat1 = Lattice(self.salt, self.sf, self.l, self.enr_max)
             lat1.set_path_from_geometry()
 
-            lat0.save_qsub_file() # As long as we are using defaults, shared qsub file will work
+            lat0.save_qsub_file()  # As long as we are using defaults, shared qsub file will work
             if self.force_recalc or not lat0.get_calculated_values():
                 lat0.cleanup()
                 lat0.save_deck()
@@ -99,7 +95,7 @@ Iteration boudaries %5.4f %5.4f, max iters: %d''' % \
                     time.sleep(self.sleep_sec)  # Wait a minute for Serpent ...
 
             rho0 = rho(lat0.k)  # [pcm]
-            rho1 = rho(lat1.k)  # [pcm]           
+            rho1 = rho(lat1.k)  # [pcm]
             if self.enr_max > 0.98 and rho1 < 0.0:
                 print("ERROR: lattice " + repr(lat1) +" cannot get critical.")
                 return False
@@ -114,22 +110,22 @@ Iteration boudaries %5.4f %5.4f, max iters: %d''' % \
                 if self.enr_max > 0.99:     # Sanity check
                     self.enr_max = 0.99
 
-        self.rholist.append( self.RhoData(enr0, rho0, rho0err) )
-        self.rholist.append( self.RhoData(enr1, rho1, rho1err) )
-        
+        self.rholist.append(self.RhoData(enr0, rho0, rho0err))
+        self.rholist.append(self.RhoData(enr1, rho1, rho1err))
+
         if my_debug > 2:
             print(repr(self.rholist))
 
         # Regula Falsi root search, Illinois algorithm
-        n_iter:int      = 0
-        side:int        = 0
-        enri:float      = None
-        rhoi:float      = None
-        rhoierr:float   = None
+        n_iter:int    = 0
+        side:int      = 0
+        enri:float    = None
+        rhoi:float    = None
+        rhoierr:float = None
         while n_iter < self.iter_max:
             n_iter += 1
             if my_debug > 2:
-                print("[DEBUG RF] ", rho0, enr0 , rho1, enr1)
+                print("[DEBUG RF] ", rho0, enr0, rho1, enr1)
             # Enrichment value for this iteration
             d_rho = rho0 - rho1
             if d_rho == 0.0:
@@ -141,26 +137,26 @@ Iteration boudaries %5.4f %5.4f, max iters: %d''' % \
             if abs(enr1 - enr0) < self.eps_enr*abs(enr0+enr1):
                 break   # Enrichment values close to each other, done
             # New lattice run
-            l = Lattice(self.salt, self.sf, self.l, enri)
-            l.set_path_from_geometry()
-            if self.force_recalc or not l.get_calculated_values():
-                l.cleanup()
-                l.save_deck()
-                l.run_deck()
-                while not l.get_calculated_values():
+            mylat = Lattice(self.salt, self.sf, self.l, enri)
+            mylat.set_path_from_geometry()
+            if self.force_recalc or not mylat.get_calculated_values():
+                mylat.cleanup()
+                mylat.save_deck()
+                mylat.run_deck()
+                while not mylat.get_calculated_values():
                     if my_debug:
                         print("[DEBUG RF] sleeping ...")
                     time.sleep(self.sleep_sec)  # Wait a minute for Serpent ...
-            rhoi   = rho(l.k)       # [pcm]
-            rhoierr = 1e5*l.kerr     # [pcm]
-            self.rholist.append( self.RhoData(enri, rhoi, rhoierr) )
-            if (rhoi-self.rho_tgt)*(rho1-self.rho_tgt) > 0.0: # Same sign as enr1
+            rhoi    = rho(mylat.k)       # [pcm]
+            rhoierr = 1e5*mylat.kerr     # [pcm]
+            self.rholist.append(self.RhoData(enri, rhoi, rhoierr))
+            if (rhoi-self.rho_tgt)*(rho1-self.rho_tgt) > 0.0:   # Same sign as enr1
                 enr1 = enri
                 rho1 = rhoi
                 if side == -1:
                     rho0 = (rho0-self.rho_tgt)/2.0 + self.rho_tgt
                 side = -1
-            if (rho0-self.rho_tgt)*(rhoi-self.rho_tgt) > 0.0: # Same sign as enr0
+            if (rho0-self.rho_tgt)*(rhoi-self.rho_tgt) > 0.0:   # Same sign as enr0
                 enr0 = enri
                 rho0 = rhoi
                 if side == 1:
@@ -184,13 +180,13 @@ Iteration boudaries %5.4f %5.4f, max iters: %d''' % \
         xvals = [x[0] for x in self.rholist]
         yvals = [x[1] for x in self.rholist]
         yerrs = [x[2] for x in self.rholist]
-        fig = plt.figure()
+        # fig = plt.figure()
         plt.errorbar(x=xvals, y=yvals, yerr=yerrs)
-        plt.title("RF, %s, %5.3f %5.3f" % (self.salt, self.sf, self.l) )
+        plt.title("RF, %s, %5.3f %5.3f" % (self.salt, self.sf, self.l))
         plt.xlabel("Enrichment")
         plt.ylabel("Reactivity [pcm]")
         plt.grid(True)
-        if plot_file == None:
+        if plot_file is None:
             plt.show()
         else:
             plt.savefig(self.iter_path+'/'+plot_file, bbox_inches='tight')
@@ -198,28 +194,28 @@ Iteration boudaries %5.4f %5.4f, max iters: %d''' % \
 
     def read_rhos_if_done(self, save_file:str='converge_data.txt') -> bool:
         'Try to load previous search file'
-        if os.path.exists(self.iter_path + '/' + save_file) and os.path.getsize(self.iter_path + '/' + save_file) > 50:
+        if os.path.exists(self.iter_path + '/' + save_file) and \
+                os.path.getsize(self.iter_path + '/' + save_file) > 50:
             fh = open(self.iter_path + '/' + save_file, 'r')
         else:
             if my_debug:
-                print("Results not available in: ", \
-                   self.iter_path + '/' + save_file)
+                print("Results not available in: ",
+                      self.iter_path + '/' + save_file)
             return False
-        myline  = fh.readline().strip()
-        mysalt  = myline.split()[5]          
-        mysf    = float(myline.split()[7])
-        myl     = float(myline.split()[9])
+        myline = fh.readline().strip()
+        mysalt = myline.split()[5]
+        mysf   = float(myline.split()[7])
+        myl    = float(myline.split()[9])
         if not (mysalt==self.salt and mysf==self.sf and myl==self.l):
             print("ERROR: Lattice parameters do not match!")
             return False
 
         for myline in fh.readlines():
-            myline  = myline.strip().split()
-            myenr   = float(myline[0])
-            myrho   = float(myline[1])
-            myrhoerr= float(myline[2])
-            self.rholist.append( self.RhoData(myenr, myrho, myrhoerr) )
-
+            myline = myline.strip().split()
+            myenr = float(myline[0])
+            myrho = float(myline[1])
+            myrhoerr = float(myline[2])
+            self.rholist.append(self.RhoData(myenr, myrho, myrhoerr))
 
         if len(self.rholist) < 3:
             return False
@@ -234,7 +230,7 @@ Iteration boudaries %5.4f %5.4f, max iters: %d''' % \
             self.conv_rho    = self.rholist[-1][1]
             self.conv_rhoerr = self.rholist[-1][2]
             if my_debug:
-                print("*** READ :",self)
+                print("*** READ :", self)
             return True
         else:
             return False
@@ -245,7 +241,7 @@ Iteration boudaries %5.4f %5.4f, max iters: %d''' % \
             print("Warning: No iterations to save!")
             return
         result = '# enr, rho, sig_rho for %s sf %5.3f l %5.3f\n' \
-                                % (self.salt, self.sf, self.l)
+            % (self.salt, self.sf, self.l)
         for r in self.rholist:
             result += '%10.8f\t%10.2f\t%6.1f\n' % (r)
 
@@ -254,8 +250,8 @@ Iteration boudaries %5.4f %5.4f, max iters: %d''' % \
             fh.write(result)
             fh.close()
         except IOError as e:
-            print("[ERROR] Unable to write to file: ", \
-                   self.iter_path + '/' + save_file)
+            print("[ERROR] Unable to write to file: ",
+                  self.iter_path + '/' + save_file)
             print(e)
 
     def cleanup_force_all(self):
@@ -265,24 +261,23 @@ Iteration boudaries %5.4f %5.4f, max iters: %d''' % \
 
     def cleanup(self, preserve_last:bool=False):
         'Delete all run directories'
-        n_lats = len(self.rholist) -1
+        n_lats = len(self.rholist) - 1
         if preserve_last:
-            n_last -= 1         # Save the last run
+            n_lats -= 1         # Save the last run
         for i in range(n_lats):
-            l = Lattice(self.salt, self.sf, self.l, rholist[i][1])
-            l.cleanup()
+            mylat = Lattice(self.salt, self.sf, self.l, self.rholist[i][1])
+            mylat.cleanup()
 
 
 # ------------------------------------------------------------
 if __name__ == '__main__':
     print("This module find critical enrichment of a lattice.")
 #    input("Press Ctrl+C to quit, or enter else to test it.")
-    c = Converge('flibe',0.07,11.0)
+    c = Converge('flibe', 0.07, 11.0)
     c.enr_min = 0.006149271528
     c.enr_max = 0.016040111061
     c.read_rhos_if_done()
     c.iterate_rho()
     c.save_iters()
-    print("Enrichment for %s sf %5.3f l %5.3f -> %7.5f" % \
-            (c.salt, c.sf, c.l, c.conv_enr) )
-
+    print("Enrichment for %s sf %5.3f l %5.3f -> %7.5f" %
+          (c.salt, c.sf, c.l, c.conv_enr))

@@ -7,8 +7,8 @@
 # GNU/GPL
 
 from collections import namedtuple
-import molmass          # https://pypi.org/project/molmass/
 import copy
+import molmass          # https://pypi.org/project/molmass/
 import numpy as np
 
 my_debug = False
@@ -64,7 +64,7 @@ class Salt(object):
         try:
             f = f.strip().replace(" ", "")
         except:
-            raise ValueError("Formula " + self.formula + " error")
+            raise ValueError("Formula " + f + " error")
         if e<0 or e>1.0:
             raise ValueError("Enrichment has to be 0-1: ", e)
 
@@ -95,6 +95,7 @@ class Salt(object):
         self.melt_parts = []        # List of , enr:floatMeltPart objects
         self.density_a:float = None # Linear density interpolation slope
         self.density_b:float = None # Intercept
+        self.Cl37enr:float   = None # Chlorine-37 enrichment, None for natural Cl
 
         if my_debug:
             print(self)
@@ -215,6 +216,14 @@ class Salt(object):
             self._fit_density()     # Necessary to prevent infinite recursion..
         return self.density_a * tempC + self.density_b
 
+    def set_chlorine_37Cl_fraction(self, f:float):
+        'Sets chlorine-37 mass fraction, only makes sense for chloride systems'
+        if f<0 or f>1.0:
+            raise ValueError("Cl37 enrichment has to be 0-1: ", f)
+        self.Cl37enr = f
+        self.ELEMENTS['Cl'].isotopes[35].abundance  = 1.0 - self.Cl37enr
+        self.ELEMENTS['Cl'].isotopes[37].abundance  = self.Cl37enr
+
     def chloride_density(self, tempC:float) -> float:
         '''Chlorides are handled separately, since there is no molar volume data for chlorides.
         If chlorine is not a natural mixture, set enrichment first, after defining the salt,
@@ -231,6 +240,8 @@ class Salt(object):
         wUCl3 = float(wUCl3)/100.0
         if abs(wNaCl+wUCl3-1.0) > 0.1:
             raise ValueError("Component mixture have to add to 100%: ", self.formula)
+        if self.Cl37enr is None:
+            print("Warning: using natural chlorine; salt.set_chlorine_37Cl_fraction() can change it.")
         tempK = tempC + 273.15
         #print('x=',wUCl3)
         return self.chloride_density_interpolation(wUCl3, tempK)

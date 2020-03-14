@@ -6,10 +6,8 @@
 # 2019-08-17
 # GNU/GPL
 
-import math
 import numpy as np
 from scipy.spatial import cKDTree
-import matplotlib.pyplot as plt
 from concurrent import futures
 import threading
 import time
@@ -25,32 +23,34 @@ SALT_KEYS = ['flibe', 'lif', 'naf', 'nafbe12', 'nafbe30', 'nafrbf2', "nafzrf", '
 SALT_FRACTIONS  = [0.005,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.10,0.11,0.12,0.13,0.14,0.15,0.16,0.18,0.20,0.225,0.25,0.275,0.30,0.325,0.35,0.375,0.40,0.425,0.45,0.475,0.50,0.525,0.55]
 LATTICE_PITCHES = [1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,11.0,12.0,13.0,14.0,15.0,16.0,17.0,18.0,19.0,20.0,21.0,22.0,23.0,24.0,25.0,26.0,28.0,30.0,32.0,34.0,36.0,38.0,40.0,45.0,50.0,55.0,60.0]
 
+
 class ConvergedPoint(object):
     'Class holding the calculated data'
     def __init__(self, salt:str='flibe', sf:float=0.1, l:float=20.0):
-        self.salt:str       = salt      # Salt key
-        self.sf:float       = sf        # Salt fraction in the lattice
-        self.l:float        = l         # Lattice pitch [cm]
-        self.enr:float      = None      # Uranium enrichment
-        self.rho:float      = None      # Reactivity [pcm]
-        self.rhoerr:float   = None      # sigma_{rho} [pcm]
+        self.salt:str     = salt      # Salt key
+        self.sf:float     = sf        # Salt fraction in the lattice
+        self.l:float      = l         # Lattice pitch [cm]
+        self.enr:float    = None      # Uranium enrichment
+        self.rho:float    = None      # Reactivity [pcm]
+        self.rhoerr:float = None      # sigma_{rho} [pcm]
 
     def __repr__(self):
         result = "Salt: %s, sf: %5.3f, l: %5.3f [cm]" % (self.salt, self.sf, self.l)
         if self.enr:
-            result += "  enr: %6.4f, rho: %6.2f +- %6.2f pcm" % (self.enr, self.rho, self.rhoerr)
+            result += "  enr: %6.4f, rho: %6.2f +- %6.2f pcm" % \
+                (self.enr, self.rho, self.rhoerr)
         return result
 
 class ScanConverge(object):
     'Go over sf/l phase space and coverge enrichments'
     def __init__(self, salt='flibe', sf_list=None, l_list=None):
         try:
-           salt_formula = lattice.SALTS[salt]
-        except:
+            self.salt_formula = lattice.SALTS[salt]
+        except ValueError:
             raise ValueError("Salt "+salt+" is undefined.")
         self.salt      = salt       # Salt key
         self.conv_list = []         # List of convergence objects, 1 per thread
-        self.data      = []         # List of ConvergedPoint results 
+        self.data      = []         # List of ConvergedPoint results
         self.sf_list   = []         # Salt fractions to scan
         if sf_list:
             self.sf_list = sf_list
@@ -112,7 +112,7 @@ class ScanConverge(object):
                 for l in self.l_list:
                     if not self.is_converged(sf, l):
                         self.conv_list.append(converge.Converge(self.salt, sf, l))   # Each point is a class on a list
-                        future = executor.submit(self.doconverge,self.conv_list[-1]) # -1: last on the list 
+                        future = executor.submit(self.doconverge,self.conv_list[-1]) # -1: last on the list
                         to_do.append(future)
                         time.sleep(0.5)
 
@@ -142,7 +142,7 @@ class ScanConverge(object):
         try:
             fh = open(savefile, 'r')
             for myline in fh.readlines():
-                myline  = myline.strip().split()
+                myline = myline.strip().split()
                 sf     = float(myline[0])
                 l      = float(myline[1])
                 cpt        = ConvergedPoint(self.salt, sf, l)
@@ -152,7 +152,7 @@ class ScanConverge(object):
                 self.data.append(cpt)
             fh.close()
             return True
-        except:
+        except IOError:
             return False
 
     def save_data(self, savefile=None) -> bool:
@@ -172,12 +172,13 @@ class ScanConverge(object):
                 fh.write("%8.6f\t%8.5f\t%14.12f\t%10.2f %6.1f\n" % \
                     (d.sf, d.l, d.enr, d.rho, d.rhoerr) )
             fh.close()
+            return True
         except IOError as e:
             print("[ERROR] Unable to write to file: ", \
-                   self.deck_path + '/' + self.deck_name)
+                  savefile)
             print(e)
             return False
-        
+
 # ------------------------------------------------------------
 if __name__ == '__main__':
     print("This module handles phase space scanning.")
@@ -186,6 +187,3 @@ if __name__ == '__main__':
     m.read_data()
     m.runscan()
     m.save_data()
-
-
-

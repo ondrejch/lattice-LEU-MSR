@@ -5,14 +5,11 @@
 # GNU/GPL
 
 import math
-import numpy as np
-import matplotlib.pyplot as plt
 import os
 import shutil
 import time
-import molmass
 import serpentTools
-serpentTools.settings.rc['verbosity']='error'
+serpentTools.settings.rc['verbosity'] = 'error'
 
 from salts import Salt
 
@@ -24,19 +21,21 @@ SALTS = {
     "nafbe30": "58%NaF + 30%BeF2 + 12%UF4",
     "nafrbf2": "46%NaF + 33%RbF + 21%UF4",
     "nafzrf" : "49%NaF + 38%ZrF4 + 13%UF4",
-    "nafkf"  : "50.5%NaF + 21.5%KF + 28%UF4" }
+    "nafkf"  : "50.5%NaF + 21.5%KF + 28%UF4",
+    "nacl"   : "55%NaCl + 54%UCl3"}
 
-NUCLEAR_DATA_LIBS = {'ENDF7', 'ENDF8', 'JEFF33' }
+NUCLEAR_DATA_LIBS = {'ENDF7', 'ENDF8', 'JEFF33'}
 
 do_plots = False
 my_debug = False
+
 
 class Lattice(object):
     'Infinite 2D lattice of graphite hexagonal blocks with a cylindrical fuel channel'
     def __init__(self, salt:str='flibe', sf:float=0.1, l:float=20.0, e:float=0.015):
         try:                            # Check if salt is known
             self.salt_formula = SALTS[salt]
-        except:
+        except ValueError:
             ValueError("Salt "+salt+" is undefined.")
         if sf>0.6 or sf<1e-4 or l<0.05 or l>100.0 or e>1.0 or e<0.0: # Reject bad input
             raise ValueError("Bad parameters: ", sf, l, e)
@@ -44,7 +43,7 @@ class Lattice(object):
         # Lattice parameters
         self.l:float       = l          # Hex lattice size [cm]
         self.sf:float      = sf         # Fuel salt fraction
-        self.r:float       = self.r()   # Diameter of the fuel salt channel [cm]
+        self.r:float       = self.radius()   # Diameter of the fuel salt channel [cm]
         self.salt_name:str = salt       # Salt identifier
         self.s             = Salt(self.salt_formula, e) # Salt used
         self.tempK:float   = 900.0      # Salt temperature [K]
@@ -79,9 +78,9 @@ class Lattice(object):
         'Area of the lattice [cm2]'
         return 2.0 * math.sqrt(3.0) * self.l**2
 
-    def r(self) -> float:
+    def radius(self) -> float:
         'Radius of inner channel [cm]'
-        return math.sqrt(self.sf * self.l**2 *math.sqrt(3.0) / (2.0 * math.pi))
+        return math.sqrt(self.sf * self.l**2 * math.sqrt(3.0)/(2.0 * math.pi))
 
     def get_cells(self) -> str:
         'Cell cards for Serpent input deck'
@@ -168,13 +167,13 @@ set title "MSR lattice cell, l {self.l}, sf {self.sf}, salt {self.salt_formula},
             fh.write(self.get_deck())
             fh.close()
         except IOError as e:
-            print("[ERROR] Unable to write to file: ", \
-                   self.deck_path + '/' + self.deck_name)
+            print("[ERROR] Unable to write to file: ",
+                  self.deck_path + '/' + self.deck_name)
             print(e)
 
     def save_qsub_file(self):
         'Writes run file for TORQUE.'
-        qsub_content ='''#!/bin/bash
+        qsub_content = '''#!/bin/bash
 #PBS -V
 #PBS -N Serp2MSR_lat
 #PBS -q {self.queue}
@@ -195,29 +194,30 @@ rm {self.deck_name}.out
             f.write(qsub_content)
             f.close()
         except IOError as e:
-            print("Unable to write to file", fname)
+            print("Unable to write to file", f)
             print(e)
 
     def run_deck(self):
         'Runs the deck using qsub_path script'
-        if self.queue is 'local':    # Run the deck locally
+        if self.queue == 'local':    # Run the deck locally
             os.chdir(self.deck_path)
             os.system(self.qsub_path)
         else:               # Submit the job on the cluster
-            os.system('cd '+ self.deck_path + ' && qsub ' + self.qsub_path)
+            os.system('cd ' + self.deck_path + ' && qsub ' + self.qsub_path)
 
     def get_calculated_values(self) -> bool:
         'Fill k and cr for lattice if calculated'
-        if os.path.exists(self.deck_path+'/done.out') and os.path.getsize(self.deck_path+'/done.out') > 30:
+        if os.path.exists(self.deck_path+'/done.out') and \
+                os.path.getsize(self.deck_path+'/done.out') > 30:
             pass
         else:                   # Calculation not done yet
             return False
 
         results = serpentTools.read(self.deck_path + '/' + self.deck_name + "_res.m")
-        self.k      = results.resdata["anaKeff"][0]
-        self.kerr   = results.resdata["anaKeff"][1]
-        self.cr     = results.resdata["conversionRatio"][0]
-        self.crerr  = results.resdata["conversionRatio"][1]
+        self.k     = results.resdata["anaKeff"][0]
+        self.kerr  = results.resdata["anaKeff"][1]
+        self.cr    = results.resdata["conversionRatio"][0]
+        self.crerr = results.resdata["conversionRatio"][1]
 
         if my_debug:
             print("[DEBUG Lat] ---> k = {self.k}, CR = {self.cr}".format(**locals()))
@@ -228,21 +228,19 @@ rm {self.deck_name}.out
         if os.path.isdir(self.deck_path):
             shutil.rmtree(self.deck_path)
 
+
 # ------------------------------------------------------------
 if __name__ == '__main__':
     print("This module handles a simple lattice.")
     input("Press Ctrl+C to quit, or enter else to test it.")
-    l = Lattice()
-    print("***** Serpent deck: \n" +  l.get_deck() + "\n***** ")
-#    l.ompcores=32
-    l.deck_path = os.path.expanduser('~/tmp/lat_test')
-    l.save_qsub_file()
-    l.save_deck()
-    l.run_deck()
-    while not l.get_calculated_values():
+    mylat = Lattice()
+    print("***** Serpent deck: \n" + mylat.get_deck() + "\n***** ")
+#    mylat.ompcores=32
+    mylat.deck_path = os.path.expanduser('~/tmp/lat_test')
+    mylat.save_qsub_file()
+    mylat.save_deck()
+    mylat.run_deck()
+    while not mylat.get_calculated_values():
         print("Wating for Serpent ...")
         time.sleep(5.0)
-    print(l.k, l.cr)
-
-
-
+    print(mylat.k, mylat.cr)
