@@ -82,8 +82,8 @@ class ScanConverge(object):
             tl.d1, tl.d2 = tl.dist.T                     # Distance from our point
             tl.v1, tl.v2 = self.LUTval[tl.ind].T         # Value - enrichment
             tl.v = (tl.d1)/(tl.d1 + tl.d2)*(tl.v2 - tl.v1) + tl.v1   # Linear interpolation
-            c.enr_min = tl.v *0.5               # Set regula-falsi min
-            c.enr_max = tl.v *1.8               #                  max
+            c.enr_min = tl.v *0.7               # Set regula-falsi min
+            c.enr_max = tl.v *1.5               #                  max
             if c.enr_max > 0.99:                # Sanity check
                 c.enr_max = 0.99
             tl.is_converged = c.iterate_rho()   # Run iterations
@@ -182,7 +182,7 @@ class ScanConverge(object):
 # ------------------------------------------------------------
 if __name__ == '__main__':
     print("This module handles phase space scanning.")
-#    input("Press Ctrl+C to quit, or enter else to test it.")
+    input("Press Ctrl+C to quit, or enter else to test it.")
     m = ScanConverge()
     m.read_data()
     m.runscan()
