@@ -22,7 +22,7 @@ SALTS = {
     "nafrbf2": "46%NaF + 33%RbF + 21%UF4",
     "nafzrf" : "49%NaF + 38%ZrF4 + 13%UF4",
     "nafkf"  : "50.5%NaF + 21.5%KF + 28%UF4",
-    "nacl"   : "55%NaCl + 54%UCl3"}
+    "nacl"   : "55%NaCl + 45%UCl3"}
 
 NUCLEAR_DATA_LIBS = {'ENDF7', 'ENDF8', 'JEFF33'}
 
