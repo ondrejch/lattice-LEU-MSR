@@ -84,6 +84,10 @@ class ScanConverge(object):
             tl.d1, tl.d2 = tl.dist.T                     # Distance from our point
             tl.v1, tl.v2 = self.LUTval[tl.ind].T         # Value - enrichment
             tl.v = (tl.d1)/(tl.d1 + tl.d2)*(tl.v2 - tl.v1) + tl.v1   # Linear interpolation
+            if tl.v > 0.0 and tl.v < 1.0:       # Sanity check
+                pass
+            else:
+                tl.v = 0.5
             c.enr_min = tl.v *0.7               # Set regula-falsi min
             c.enr_max = tl.v *1.5               #                  max
             if c.enr_max > 0.99:                # Sanity check
