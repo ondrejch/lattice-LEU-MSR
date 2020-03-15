@@ -16,8 +16,10 @@ import converge
 
 my_debug:int = 1
 
-SALT_FRACTIONS  = [0.07,0.08]
-LATTICE_PITCHES = [10.0,11.0,12.0,13.0,14.0,15.0,16.0,17.0,18.0,19.0,20.0,21.0,22.0]
+#SALT_FRACTIONS  = [0.07,0.08]
+#LATTICE_PITCHES = [22.0]
+#LATTICE_PITCHES = [10.0,11.0,12.0,13.0,14.0,15.0,16.0,17.0,18.0,19.0,20.0,21.0,22.0]
+#SALT_FRACTIONS  = [0.08]
 
 SALT_KEYS = ['flibe', 'lif', 'naf', 'nafbe12', 'nafbe30', 'nafrbf2', "nafzrf", 'nafkf'] # list(lattice.SALTS.keys())
 SALT_FRACTIONS  = [0.005,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.10,0.11,0.12,0.13,0.14,0.15,0.16,0.18,0.20,0.225,0.25,0.275,0.30,0.325,0.35,0.375,0.40,0.425,0.45,0.475,0.50,0.525,0.55]
@@ -71,7 +73,7 @@ class ScanConverge(object):
         self.old_tree = cKDTree(self.LUTxy)
 
     def doconverge(self, c) -> ConvergedPoint:
-        'Converge one lattice'
+        'Converge one lattice, worker of self.runscan()'
         tl = threading.local()          # Prevent threads overwriting each others data
         tl.res = ConvergedPoint(self.salt, c.sf, c.l)
         tl.is_converged:bool = False
@@ -104,6 +106,20 @@ class ScanConverge(object):
             print("* DBG: ", repr(tl.res))
         return tl.res
 
+    def runread(self):
+        'Reads all points to find if they are converged and adds them to the converged list'
+        for sf in self.sf_list:
+            for l in self.l_list:
+                c = converge.Converge(self.salt, sf, l)
+                if c.read_rhos_if_done():
+                    res = ConvergedPoint(self.salt, c.sf, c.l)
+                    res.enr    = c.conv_enr
+                    res.rho    = c.conv_rho
+                    res.rhoerr = c.conv_rhoerr
+                    self.data.append(res)
+                    if my_debug:
+                        print(res)
+
     def runscan(self):
         'Threaded convergence scan for sf x pitch phase space'
         with futures.ThreadPoolExecutor(max_workers=50) as executor:
@@ -126,7 +142,7 @@ class ScanConverge(object):
             print(self.data)
 
     def is_converged(self, sf, l):
-        'Is this lattice already converged?'
+        'Is this lattice already in converged list self.data?'
         if not self.data:
             return False
         for d in self.data:
