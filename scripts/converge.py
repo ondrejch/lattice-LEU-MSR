@@ -219,13 +219,14 @@ Iteration boudaries %5.4f %5.4f, max iters: %d''' % \
 
         if len(self.rholist) < 3:
             return False
-        found_enr1   = self.rholist[-2][0]
-        found_enr0   = self.rholist[-1][0]
-        found_rho1   = self.rholist[-2][1]
+#        found_enr1   = self.rholist[-2][0]
+#        found_enr0   = self.rholist[-1][0]
+#        found_rho1   = self.rholist[-2][1]
         found_rho0   = self.rholist[-1][1]
-        found_rhoerr = self.rholist[-1][2]
-        if abs((found_rho0 - self.rho_tgt)*(found_rho1-self.rho_tgt)) < self.eps_rho**2 or \
-            abs(found_enr1 - found_enr0) < self.eps_enr*abs(found_enr0+found_enr1):
+#        found_rhoerr = self.rholist[-1][2]
+#        if abs((found_rho0 - self.rho_tgt)*(found_rho1-self.rho_tgt)) < self.eps_rho**2 or \
+#            abs(found_enr1 - found_enr0) < self.eps_enr*abs(found_enr0+found_enr1):
+        if abs(found_rho0 - self.rho_tgt) < self.eps_rho:
             self.conv_enr    = self.rholist[-1][0]
             self.conv_rho    = self.rholist[-1][1]
             self.conv_rhoerr = self.rholist[-1][2]
