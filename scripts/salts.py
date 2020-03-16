@@ -302,7 +302,7 @@ class Salt(object):
                 if w.Z == 92:
                     print("DEBUG SALT: %d -> %8.3f" % (w.A, 100.0*w.wf/u) )
         mat  = "% Fuel salt: " + self.nice_name() + ", U enrichment " + str(self.enr)
-        mat += "\nmat fuelsalt %12.8f rgb %s tmp %8.3f\n" % (-1.0*self.densityK(tempK),rgb,tempK)
+        mat += "\nmat fuelsalt %12.8f rgb %s burn 1 tmp %8.3f\n" % (-1.0*self.densityK(tempK),rgb,tempK)
         for w in self.wflist:
             mat += "%3d%03d.%s  %14.12f" % (w.Z, w.A, lib, -1.0*w.wf)
             mat += "    %  "+ self.ELEMENTS[w.Z].symbol +"-"+ str(w.A) +"\n"
