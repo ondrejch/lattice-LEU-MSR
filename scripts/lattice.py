@@ -22,7 +22,7 @@ SALTS = {
     "nafrbf2": "46%NaF + 33%RbF + 21%UF4",
     "nafzrf" : "49%NaF + 38%ZrF4 + 13%UF4",
     "nafkf"  : "50.5%NaF + 21.5%KF + 28%UF4",
-    "nacl"   : "55%NaCl + 45%UCl3"}
+    "nacl"   : "58%NaCl + 42%UCl3"}
 
 NUCLEAR_DATA_LIBS = {'ENDF7', 'ENDF8', 'JEFF33'}
 
@@ -63,6 +63,10 @@ class Lattice(object):
         self.qsub_path:str = os.path.expanduser('~/run.sh')  # Full path to the qsub script
         self.main_path:str = os.path.expanduser('~/L/')+salt # Main path
         self.boron_graphite:float = 2e-06     # 2ppm boron in graphite
+
+        self.do_feedbacks:bool = False  # Should we run feedback branches?
+        self.fbs = None # TODO
+
         if my_debug:
             print("DEBUG LATTICE ", self.salt_formula, self.sf, self.l, self.s.enr)
 
