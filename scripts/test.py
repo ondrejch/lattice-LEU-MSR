@@ -17,7 +17,7 @@ class Tests(unittest.TestCase):
     def test_flibe_mat(self):
         expected_mat = '''\
 % Fuel salt: 72%LiF + 16%BeF2 + 12%UF4, U enrichment 0.02
-mat fuelsalt  -3.35933104 rgb 240 30 30 tmp  900.000
+mat fuelsalt  -3.35933104 rgb 240 30 30 burn 1 tmp  900.000
   3006.09c  -0.000003387223    %  Li-6
   3007.09c  -0.079012785357    %  Li-7
   4009.09c  -0.022555205339    %  Be-9
@@ -43,7 +43,7 @@ mat fuelsalt  -3.35933104 rgb 240 30 30 tmp  900.000
     def test_fnak_mat(self):
         expected_mat = '''\
 % Fuel salt: 50.5%NaF + 21.5%KF + 28%UF4, U enrichment 0.02
-mat fuelsalt  -4.25418148 rgb 240 30 30 tmp  900.000
+mat fuelsalt  -4.25418148 rgb 240 30 30 burn 1 tmp  900.000
   9019.09c  -0.287451817982    %  F-19
  11023.09c  -0.095467627104    %  Na-23
  19039.09c  -0.064241463073    %  K-39
