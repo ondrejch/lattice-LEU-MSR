@@ -22,7 +22,7 @@ SALTS = {
     "nafrbf2": "46%NaF + 33%RbF + 21%UF4",
     "nafzrf" : "49%NaF + 38%ZrF4 + 13%UF4",
     "nafkf"  : "50.5%NaF + 21.5%KF + 28%UF4",
-    "nacl"   : "58%NaCl + 42%UCl3"}
+    "nacl"   : "66.6%NaCl + 33.4%UCl3"}
 
 NUCLEAR_DATA_LIBS = {'ENDF7', 'ENDF8', 'JEFF33'}
 
@@ -75,7 +75,7 @@ class Lattice(object):
 
     def set_path_from_geometry(self):
         'Sets path to directory to run cases based on geometry'
-        self.deck_path = self.main_path + "/" + "%08.6f"%self.sf + \
+        self.deck_path = self.main_path + "/%08.6f"%self.sf + \
             "/%08.5f"%self.l + "/%014.12f"%self.s.enr
 
     def hexarea(self) -> float:
