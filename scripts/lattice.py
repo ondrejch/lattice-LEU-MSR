@@ -47,6 +47,8 @@ class Lattice(object):
         self.salt_name:str = salt       # Salt identifier
         self.s             = Salt(self.salt_formula, e) # Salt used
         self.tempK:float   = 900.0      # Salt temperature [K]
+        self.grtempK:float = 950.0      # Graphite temperature [K]
+        self.grdens:float  = 1.80       # Graphite density at 950 K [g/cm3]
 
         self.k:float       = None       # ANALYTICAL_KEFF
         self.kerr:float    = None       # ANALYTICAL_KEFF Error
@@ -63,9 +65,6 @@ class Lattice(object):
         self.qsub_path:str = os.path.expanduser('~/run.sh')  # Full path to the qsub script
         self.main_path:str = os.path.expanduser('~/L/')+salt # Main path
         self.boron_graphite:float = 2e-06     # 2ppm boron in graphite
-
-        self.do_feedbacks:bool = False  # Should we run feedback branches?
-        self.fbs = None # TODO
 
         if my_debug:
             print("DEBUG LATTICE ", self.salt_formula, self.sf, self.l, self.s.enr)
@@ -114,7 +113,7 @@ surf 2   hexxc  0.0 0.0 {self.l}  % reflective unit cell boundary
         graphite = '''
 %  NUCLEAR GRAPHITE: Natural concentration of carbon
 %  DENSITY: 1.80 G/CC
-mat graphite -1.80 moder graph 6000 tms 950
+mat graphite -{self.grdens} moder graph 6000 tms {self.grtempK}
 rgb 130 130 130
 6000.{gr_lib} {gr_frac}
 5010.{gr_lib} {b10_frac} % boron impirity eq.
