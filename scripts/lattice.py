@@ -72,10 +72,13 @@ class Lattice(object):
     def __repr__(self):
         return "Lattice: "+repr(self.s)+" sf: "+repr(self.sf)+" l: "+repr(self.l)
 
-    def set_path_from_geometry(self):
+    def set_path_from_geometry(self, extra_path:str=""):
         'Sets path to directory to run cases based on geometry'
         self.deck_path = self.main_path + "/%08.6f"%self.sf + \
             "/%08.5f"%self.l + "/%014.12f"%self.s.enr
+        if extra_path != "":
+            self.deck_path += "/" + extra_path
+
 
     def hexarea(self) -> float:
         'Area of the lattice [cm2]'
