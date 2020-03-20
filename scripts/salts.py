@@ -289,8 +289,12 @@ class Salt(object):
         'Return salt name with spaces around + sign'
         return self.formula.replace('+',' + ')
 
-    def serpent_mat(self, tempK:float=900, lib="09c", rgb:str="240 30 30"):
-        'Returns Serpent deck for the salt material'
+    def serpent_mat(self, tempK:float=900.0, mat_tempK:float=900.0,
+                    lib="09c", rgb:str="240 30 30"):
+        '''Returns Serpent deck for the salt material
+        tempK is the temperature for density calculation,
+        mat_tempK is the material temperature.
+        This is useful for Doppler feedback calculations.'''
         if not self.wflist:         # Generate list of isotopic weight fractions
             self._isotopic_fractions()
         if my_debug:                # Check uranium enrichment
@@ -302,7 +306,7 @@ class Salt(object):
                 if w.Z == 92:
                     print("DEBUG SALT: %d -> %8.3f" % (w.A, 100.0*w.wf/u) )
         mat  = "% Fuel salt: " + self.nice_name() + ", U enrichment " + str(self.enr)
-        mat += "\nmat fuelsalt %12.8f rgb %s burn 1 tmp %8.3f\n" % (-1.0*self.densityK(tempK),rgb,tempK)
+        mat += "\nmat fuelsalt %12.8f rgb %s burn 1 tmp %8.3f\n" % (-1.0*self.densityK(tempK),rgb,mat_tempK)
         for w in self.wflist:
             mat += "%3d%03d.%s  %14.12f" % (w.Z, w.A, lib, -1.0*w.wf)
             mat += "    %  "+ self.ELEMENTS[w.Z].symbol +"-"+ str(w.A) +"\n"

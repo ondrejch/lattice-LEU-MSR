@@ -14,6 +14,7 @@ from collections import namedtuple
 
 from lattice import Lattice
 
+SLEEP_SEC:int = 30        # Sleep timer between results read attempts [s]
 my_debug:int = 0
 
 def rho(k:float) -> float:
@@ -36,7 +37,6 @@ class Converge(object):
 
         self.RhoData = namedtuple("RhoData" ,"enr rho rho_err")
         self.rholist        = []        # List of results
-        self.sleep_sec:int  = 30        # Sleep timer between results read attempts [s]
         # Constants for iteration boundaries
         self.enr_min:float  = 0.007     # LEU enrichment boundaries
         self.enr_max:float  = 0.21      #  for iterative search
@@ -92,7 +92,7 @@ Iteration boudaries %5.4f %5.4f, max iters: %d''' % \
                 else:
                     if my_debug:
                         print("[DEBUG CONV] sleeping ...")
-                    time.sleep(self.sleep_sec)  # Wait a minute for Serpent ...
+                    time.sleep(SLEEP_SEC)  # Wait a minute for Serpent ...
 
             rho0 = rho(lat0.k)  # [pcm]
             rho1 = rho(lat1.k)  # [pcm]
@@ -146,7 +146,7 @@ Iteration boudaries %5.4f %5.4f, max iters: %d''' % \
                 while not mylat.get_calculated_values():
                     if my_debug:
                         print("[DEBUG RF] sleeping ...")
-                    time.sleep(self.sleep_sec)  # Wait a minute for Serpent ...
+                    time.sleep(SLEEP_SEC)  # Wait a minute for Serpent ...
             rhoi    = rho(mylat.k)       # [pcm]
             rhoierr = 1e5*mylat.kerr     # [pcm]
             self.rholist.append(self.RhoData(enri, rhoi, rhoierr))
@@ -272,7 +272,7 @@ Iteration boudaries %5.4f %5.4f, max iters: %d''' % \
 
 # ------------------------------------------------------------
 if __name__ == '__main__':
-    print("This module find critical enrichment of a lattice.")
+    print("This module finds a critical enrichment of a lattice.")
 #    input("Press Ctrl+C to quit, or enter else to test it.")
     c = Converge('flibe', 0.07, 11.0)
     c.enr_min = 0.006149271528
