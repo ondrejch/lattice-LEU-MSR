@@ -46,7 +46,7 @@ class Lattice(object):
         self.r:float       = self.radius()   # Diameter of the fuel salt channel [cm]
         self.salt_name:str = salt       # Salt identifier
         self.s             = Salt(self.salt_formula, e) # Salt used
-        self.tempK:float   = 900.0      # Salt temperature [K] for density
+        self.fs_tempK:float  = 900.0    # Salt temperature [K] for density
         self.mat_tempK:float = 900.0    # Salt temperature [K] for material temp
         self.grtempK:float = 950.0      # Graphite temperature [K]
         self.grdens:float  = 1.80       # Graphite density at 950 K [g/cm3]
@@ -161,7 +161,7 @@ set title "MSR lattice cell, l {self.l}, sf {self.sf}, salt {self.salt_formula},
 '''
         deck += self.get_surfaces()
         deck += self.get_cells()
-        deck += self.s.serpent_mat(self.tempK, self.mat_tempK)
+        deck += self.s.serpent_mat(self.fs_tempK, self.mat_tempK)
         deck += self.get_graphite()
         deck += self.get_data_cards()
         return deck.format(**locals())

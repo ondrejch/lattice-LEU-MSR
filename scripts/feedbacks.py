@@ -10,12 +10,24 @@ import time
 from lattice import Lattice
 from converge import rho
 
-my_debug:int = 0
+my_debug:int = 1
 
 GRAPHITE_CTE:float = 3.5e-6   # Graphite linear thermal expansion coefficient (CTE) [m/m per K]
+GRAPHITE_RHO:float = 1.80     # Graphite density at 950 K [g/cm3]
 FB_BASE_TEMP:float = 900.0    # Base temperature for feedbacks [K]
-FB_TEMPS      = [800.0, 850.0, 900.0, 950.0, 1000.0]  # Temperatures [K] for feedback calculations
+FB_TEMPS      = [800.0, 850.0, 900.0, 950.0, 1000.0]  # Temps [K] for feedback calculations
 SLEEP_SEC:int = 30        # Sleep timer between results read attempts [s]
+
+def graphite_linear_expansion(l0:float=100, tempK:float=950.0):
+    'Return new lenght based on graphite thermal expansion'
+    l_f = l_0 * (1.0 + GRAPHITE_CTE * (tempK - 950.0))
+    return l_f
+
+def graphite_density_expansion(tempK:float=950.0):
+    'Return new density based on graphite thermal expansion'
+    unit_f  = (1.0 + GRAPHITE_CTE * (tempK - 950.0))
+    rho_f   = GRAPHITE_RHO / unit_f**3
+    return rho_f
 
 
 class Feedbacks(object):
@@ -31,29 +43,51 @@ class Feedbacks(object):
 #        self.fs
         self.force_recalc:bool = False  # Force recalculation of existing data
 
-    def calculate_salt_doppler(self):
-        '''Run all salt doppler cases'''
+    def run_salt_feedback(self, feedback:str="fs.dopp"):
+        '''Run all salt feedback cases:
+            fs.dopp - Doppler
+            fs.void - Void
+            fs.both - Doppler + void
+        '''
         for t in FB_TEMPS:
-            print(t)
-            fb_lat_name = "fs.dopp." + str(t)
-            if my_debug:
-                print(fb_lat_name)
+            fb_lat_name = feedback + "."  + str(t)
             self.fb_lats[fb_lat_name] = Lattice(self.salt, self.sf, self.l, self.e)
-            self.fb_lats[fb_lat_name].tempK = FB_BASE_TEMP
-            self.fb_lats[fb_lat_name].mat_tempK = t
-            if t == FB_BASE_TEMP:
-                self.fb_lats[fb_lat_name].set_path_from_geometry()
+            mylat           = self.fb_lats[fb_lat_name]   # Shorthand
+            if   feedback == "fs.dopp":           # Doppler
+                mylat.tempK     = FB_BASE_TEMP
+                mylat.mat_tempK = t
+            elif feedback == "fs.void":      # Void
+                mylat.tempK     = t
+                mylat.mat_tempK = FB_BASE_TEMP
+            elif feedback == "fs.both":      # Void + Doppler
+                mylat.tempK     = t
+                mylat.mat_tempK = t
             else:
-                self.fb_lats[fb_lat_name].set_path_from_geometry(fb_lat_name)
-            print(self.fb_lats[fb_lat_name].deck_path)
-            if self.force_recalc or not self.fb_lats[fb_lat_name].get_calculated_values():
-                self.fb_lats[fb_lat_name].cleanup()
-                self.fb_lats[fb_lat_name].save_deck()
-                self.fb_lats[fb_lat_name].run_deck()
-                while not self.fb_lats[fb_lat_name].get_calculated_values():
-                    if my_debug:
-                        print("[DEBUG RF] sleeping ...")
-                    time.sleep(SLEEP_SEC)  # Wait a minute for Serpent ...
+                raise ValueError("Feedback " + feedback + " not implemented!")
+            if t == FB_BASE_TEMP:   # Base case
+                mylat.set_path_from_geometry()
+            else:                   # Feedback cases
+                mylat.set_path_from_geometry(fb_lat_name)
+            if my_debug:
+                print(mylat.deck_path)
+            if self.force_recalc or not mylat.get_calculated_values():
+                mylat.cleanup()
+                mylat.save_deck()
+                mylat.run_deck()
+
+    def read_fb(self, feedback:str="fs.dopp."):
+        '''REad salt Doppler data'''
+        while True:     # Wait for all cases to finish
+            is_done = True
+            for t in FB_TEMPS:
+                fb_lat_name = feedback + "." + str(t)
+                if not self.fb_lats[fb_lat_name].get_calculated_values():
+                    is_done = False
+            if is_done:     # All done
+                break
+            if my_debug:
+                print("[DEBUG RF] sleeping ...")
+            time.sleep(SLEEP_SEC)  # Wait a minute for Serpent ...
 
 
 
@@ -62,4 +96,4 @@ if __name__ == '__main__':
     print("This module finds lattice feedbacks.")
 #    input("Press Ctrl+C to quit, or enter else to test it.")
     f = Feedbacks()
-    f.calculate_salt_doppler()
+    f.run_salt_feedback()
