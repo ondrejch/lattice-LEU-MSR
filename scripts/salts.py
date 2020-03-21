@@ -12,6 +12,7 @@ import molmass          # https://pypi.org/project/molmass/
 import numpy as np
 
 my_debug = False
+density_warn = True
 
 MOLARVOLUMES = { # Melt composition molar volumes at 600 and 800 degC
     'LiF' : (13.46, 14.19), # from ORNL/TM-2006/12 and ORNL-3913
@@ -210,7 +211,7 @@ class Salt(object):
         'Returns density [g/cm3] based on temperature in degC'
         if 'UCl' in self.formula:   # Chlorides handled separately, no molar volumes available
             return self.chloride_density(tempC)
-        if tempC < 600 or tempC > 800:
+        if density_warn and (tempC < 600 or tempC > 800):
             print("Warning: temperature data is interpolated between 600 and 800C.")
         if not self.density_a or not self.density_b:
             self._fit_density()     # Necessary to prevent infinite recursion..
@@ -224,7 +225,10 @@ class Salt(object):
         self.ELEMENTS['Cl'].isotopes[35].abundance  = 1.0 - self.Cl37enr
         self.ELEMENTS['Cl'].isotopes[37].abundance  = self.Cl37enr
 
-    def chloride_density(self, tempC:float) -> float:
+    def chloride_densityK(self, tempK:float) -> float:
+        return self.chloride_densityC(tempK - 273.15)
+
+    def chloride_densityC(self, tempC:float) -> float:
         '''Chlorides are handled separately, since there is no molar volume data for chlorides.
         If chlorine is not a natural mixture, set enrichment first, after defining the salt,
         by self.set_chlorine_37Cl_fraction()

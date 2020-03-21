@@ -51,7 +51,7 @@ class ScanFeedbacks(object):
         'Constructor, expects a list of ConvergedPoints, ScanConverge:data'
         self.convpoints  = converged_points
         self.fb_list     = []           # List of feedback objects
-        self.max_threads = 5            # Lattices to run simultaneously
+        self.max_threads = 10           # Lattices to run simultaneously
     
     def calcualte_feedbacks(self, fb_lat) -> float:
         'Calculates feedbacks for fb_lat'
@@ -99,7 +99,6 @@ class ScanConverge(object):
             self.l_list = l_list
         else:
             self.l_list = LATTICE_PITCHES
-
         self.max_threads = 50       # Convergences to run simultaneously
 
         # Increase convergence by using old values to start the regula falsi search
