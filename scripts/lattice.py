@@ -48,7 +48,7 @@ class Lattice(object):
         self.s             = Salt(self.salt_formula, e) # Salt used
         self.fs_tempK:float  = 900.0    # Salt temperature [K] for density
         self.mat_tempK:float = 900.0    # Salt temperature [K] for material temp
-        self.grtempK:float = 950.0      # Graphite temperature [K]
+        self.gr_tempK:float  = 950.0    # Graphite temperature [K]
         self.grdens:float  = 1.80       # Graphite density at 950 K [g/cm3]
 
         self.k:float       = None       # ANALYTICAL_KEFF
@@ -117,7 +117,7 @@ surf 2   hexxc  0.0 0.0 {self.l}  % reflective unit cell boundary
         graphite = '''
 %  NUCLEAR GRAPHITE: Natural concentration of carbon
 %  DENSITY: 1.80 G/CC
-mat graphite -{self.grdens} moder graph 6000 tms {self.grtempK}
+mat graphite -{self.grdens} moder graph 6000 tms {self.gr_tempK}
 rgb 130 130 130
 6000.{self.gr_lib} {gr_frac}
 5010.{self.gr_lib} {b10_frac} % boron impirity eq.
@@ -169,7 +169,7 @@ set title "MSR lattice cell, l {self.l}, sf {self.sf}, salt {self.salt_formula},
     def save_deck(self):
         'Saves Serpent deck into an input file'
         try:
-            os.makedirs(self.deck_path)
+            os.makedirs(self.deck_path, exist_ok=True)
             fh = open(self.deck_path + '/' + self.deck_name, 'w')
             fh.write(self.get_deck())
             fh.close()
@@ -230,10 +230,16 @@ rm {self.deck_name}.out
             print("[DEBUG Lat] ---> k = {self.k}, CR = {self.cr}".format(**locals()))
         return True
 
-    def cleanup(self):
+    def cleanup(self, purge:bool=True):
         'Delete the run directory'
         if os.path.isdir(self.deck_path):
-            shutil.rmtree(self.deck_path)
+            if purge:
+                shutil.rmtree(self.deck_path)
+            else:
+                with os.scandir(self.deck_path) as it:
+                    for entry in it:
+                        if entry.is_file():
+                            os.remove(entry)
 
 
 # ------------------------------------------------------------

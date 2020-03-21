@@ -18,9 +18,9 @@ GRAPHITE_RHO:float = 1.80     # Graphite density at 950 K [g/cm3]
 FB_BASE_TEMP:float = 900.0    # Base temperature for feedbacks [K]
 FB_TEMPS      = [800.0, 850.0, 900.0, 950.0, 1000.0]  # Temps [K] for feedback calculations
 SLEEP_SEC:int = 30        # Sleep timer between results read attempts [s]
-FEEDBACKS = ['fs.dopp', 'fs.void', 'fs.both', 'gr.dopp']
+FEEDBACK_TYPES = ['fs.dopp', 'fs.void', 'fs.both', 'gr.dopp', 'gr.dens', 'all']
 
-def graphite_linear_expansion(l0:float=100, tempK:float=950.0):
+def graphite_linear_expansion(l_0:float=100, tempK:float=950.0):
     'Return new lenght based on graphite thermal expansion'
     l_f = l_0 * (1.0 + GRAPHITE_CTE * (tempK - 950.0))
     return l_f
@@ -52,39 +52,57 @@ class Feedbacks(object):
             fs.void - Fuel salt Void
             fs.both - Fuel salt Doppler + void
             gr.dopp - Graphite Doppler
-            fs.gr
+            gr.dens - Graphite Doppler + density
         '''
+        is_base_case_running:bool = False
         for t in FB_TEMPS:
+            if t == FB_BASE_TEMP and is_base_case_running:   # Run base case only once
+                continue
             fb_lat_name = feedback + "."  + str("%04.0f" % t)
             self.fb_lats[fb_lat_name] = Lattice(self.salt, self.sf, self.l, self.e)
             mylat           = self.fb_lats[fb_lat_name]   # Shorthand
             if   feedback == "fs.dopp":      # Salt Doppler
-                mylat.tempK     = FB_BASE_TEMP
+                mylat.fs_tempK  = FB_BASE_TEMP
                 mylat.mat_tempK = t
             elif feedback == "fs.void":      # Salt Void
-                mylat.tempK     = t
+                mylat.fs_tempK  = t
                 mylat.mat_tempK = FB_BASE_TEMP
             elif feedback == "fs.both":      # Salt Void + Doppler
-                mylat.tempK     = t
+                mylat.fs_tempK  = t
                 mylat.mat_tempK = t
             elif feedback == "gr.dopp":
-                mylat.tempK     = FB_BASE_TEMP
+                mylat.fs_tempK  = FB_BASE_TEMP
                 mylat.mat_tempK = FB_BASE_TEMP
-                mylat.grtempK   = t + 50.0
+                mylat.gr_tempK  =  t + 50.0
+            elif feedback == "gr.dens":
+                mylat.fs_tempK  = FB_BASE_TEMP
+                mylat.mat_tempK = FB_BASE_TEMP
+                mylat.gr_tempK  = t + 50.0
+                mylat.l         = graphite_linear_expansion(mylat.l, t + 50)
+                mylat.r         = graphite_linear_expansion(mylat.r, t + 50)
+                mylat.grdens    = graphite_density_expansion(t + 50)
+            elif feedback == "all":
+                mylat.fs_tempK  = t
+                mylat.mat_tempK = t
+                mylat.gr_tempK  = t + 50.0
+                mylat.l         = graphite_linear_expansion(mylat.l, t + 50)
+                mylat.r         = graphite_linear_expansion(mylat.r, t + 50)
+                mylat.grdens    = graphite_density_expansion(t + 50)
             else:
                 raise ValueError("Feedback " + feedback + " not implemented!")
             if t == FB_BASE_TEMP:   # Base case
                 mylat.set_path_from_geometry()
+                is_base_case_running = True
             else:                   # Feedback cases
                 mylat.set_path_from_geometry(fb_lat_name)
             if mylat.mat_tempK < 900.0:     # TODO this should be fixed if we generalize
                 mylat.lib = '06c'           # nuclear data libraries
-            if mylat.grtempK < 900.0:
-                mylat.grtempK = '06c'
+            if mylat.gr_tempK < 900.0:
+                mylat.gr_lib = '06c'
             if my_debug:
                 print(mylat.deck_path)
             if self.force_recalc or not mylat.get_calculated_values():
-                mylat.cleanup()
+                mylat.cleanup(purge=False)
                 mylat.save_deck()
                 mylat.run_deck()
 
@@ -111,15 +129,18 @@ class Feedbacks(object):
 #        w=[1./abs(r*e) for r, e in zip(f.fb_rhos[feedback],f.fb_rhos_err[feedback])]
         (slope, intercept) = np.polyfit(FB_TEMPS, f.fb_rhos[feedback], 1)
         self.alpha[feedback] = slope
-
+        if my_debug:
+            print("Feedback " + feedback + ": ", slope, intercept)
 
 # ------------------------------------------------------------
 if __name__ == '__main__':
     print("This module finds lattice feedbacks.")
 #    input("Press Ctrl+C to quit, or enter else to test it.")
     f = Feedbacks()
-    for fb in FEEDBACKS:
+    f.force_recalc = True
+    for fb in FEEDBACK_TYPES:
         f.run_feedback(fb)
-    for fb in FEEDBACKS:
+    for fb in FEEDBACK_TYPES:
         f.read_feedback(fb)
+
 

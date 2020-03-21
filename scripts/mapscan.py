@@ -13,6 +13,7 @@ import threading
 import time
 import lattice
 import converge
+import feedbacks
 
 my_debug:int = 1
 
@@ -43,6 +44,41 @@ class ConvergedPoint(object):
                 (self.enr, self.rho, self.rhoerr)
         return result
 
+
+class ScanFeedbacks(object):
+    'Go over ConvergedPoints and calculate feedbacks'
+    def __init__(self, converged_points = []):
+        'Constructor, expects a list of ConvergedPoints, ScanConverge:data'
+        self.convpoints  = converged_points
+        self.fb_list     = []           # List of feedback objects
+        self.max_threads = 5            # Lattices to run simultaneously
+    
+    def calcualte_feedbacks(self, fb_lat) -> float:
+        'Calculates feedbacks for fb_lat'
+        tl = threading.local()          # Prevent threads overwriting each others data
+        for tl.fb in feedbacks.FEEDBACK_TYPES:
+            fb_lat.run_feedback(tl.fb)  # Submit jobs
+        for tl.fb in feedbacks.FEEDBACK_TYPES:
+            fb_lat.read_feedback(tl.fb) # Calculates \alphas
+        return fb_lat.alpha['all']
+    
+    def runscan(self):
+        'Threaded feedback calculation'
+        with futures.ThreadPoolExecutor(max_workers=self.max_threads) as executor:
+            to_do = []
+            for d in self.convpoints:
+                if d.enr > 0:   # Skip lattices that cannot convege
+                    self.fb_list.append(feedbacks.Feedbacks(d.salt, d.sf, d.l, d.enr))
+                    future = executor.submit(self.calcualte_feedbacks, self.fb_list[-1])
+                    to_do.append(future)
+                    time.sleep(0.1)
+            for future in futures.as_completed(to_do):
+                res = future.result()
+                if my_debug:
+                    msg = '{} result: {!r}'
+                    print(msg.format(future, res))
+
+
 class ScanConverge(object):
     'Go over sf/l phase space and coverge enrichments'
     def __init__(self, salt='flibe', sf_list=None, l_list=None):
@@ -64,7 +100,9 @@ class ScanConverge(object):
         else:
             self.l_list = LATTICE_PITCHES
 
-        # Increase convergence by using old values to start regula falsi
+        self.max_threads = 50       # Convergences to run simultaneously
+
+        # Increase convergence by using old values to start the regula falsi search
         # https://stackoverflow.com/questions/29974122/interpolating-data-from-a-look-up-table#30057858
         old_LUT = np.genfromtxt("/home/ondrejch/L/old_"+salt+".dat", delimiter=" ")
         self.LUTxy = old_LUT[:, :2]
@@ -126,7 +164,7 @@ class ScanConverge(object):
 
     def runscan(self):
         'Threaded convergence scan for sf x pitch phase space'
-        with futures.ThreadPoolExecutor(max_workers=50) as executor:
+        with futures.ThreadPoolExecutor(max_workers=self.max_threads) as executor:
             to_do = []
             for sf in self.sf_list:
                 for l in self.l_list:
