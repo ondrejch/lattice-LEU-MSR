@@ -50,7 +50,7 @@ class Feedbacks(object):
             fs.both - Doppler + void
         '''
         for t in FB_TEMPS:
-            fb_lat_name = feedback + "."  + str(t)
+            fb_lat_name = feedback + "."  + str("%04.0f" % t)
             self.fb_lats[fb_lat_name] = Lattice(self.salt, self.sf, self.l, self.e)
             mylat           = self.fb_lats[fb_lat_name]   # Shorthand
             if   feedback == "fs.dopp":           # Doppler
@@ -68,6 +68,8 @@ class Feedbacks(object):
                 mylat.set_path_from_geometry()
             else:                   # Feedback cases
                 mylat.set_path_from_geometry(fb_lat_name)
+            if mylat.mat_tempK < 900.0:     # TODO this should be fixed if we generalize 
+                mylat.lib = '06c'           # nuclear data libraries
             if my_debug:
                 print(mylat.deck_path)
             if self.force_recalc or not mylat.get_calculated_values():
@@ -75,12 +77,12 @@ class Feedbacks(object):
                 mylat.save_deck()
                 mylat.run_deck()
 
-    def read_fb(self, feedback:str="fs.dopp."):
-        '''REad salt Doppler data'''
+    def read_fb(self, feedback:str="fs.dopp"):
+        '''Read salt Doppler data'''
         while True:     # Wait for all cases to finish
             is_done = True
             for t in FB_TEMPS:
-                fb_lat_name = feedback + "." + str(t)
+                fb_lat_name = feedback + "."  + str("%04.0f" % t)
                 if not self.fb_lats[fb_lat_name].get_calculated_values():
                     is_done = False
             if is_done:     # All done
@@ -97,3 +99,5 @@ if __name__ == '__main__':
 #    input("Press Ctrl+C to quit, or enter else to test it.")
     f = Feedbacks()
     f.run_salt_feedback()
+    f.read_fb()
+    

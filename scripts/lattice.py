@@ -57,7 +57,8 @@ class Lattice(object):
         self.crerr:float   = None       # CONVERSION_RATIO Error
 
         self.nuc_libs:str  = 'ENDF7'    # Nuclear data library
-        self.lib:str       = '09c'      # CE xsection temp selection
+        self.lib:str       = '09c'      # CE xsection temp selection salt
+        self.gr_lib:str    = '09c'      # CE xsection temp selection graphite
         self.queue:str     = 'fill'     # NEcluster torque queue
         self.histories:int = 5000       # Neutron histories per cycle
         self.ompcores:int  = 8          # OMP core count
@@ -110,7 +111,6 @@ surf 2   hexxc  0.0 0.0 {self.l}  % reflective unit cell boundary
 
     def get_graphite(self) -> str:
         'Graphite material cards'
-        gr_lib   = self.lib
         gr_frac  = 1.0 - self.boron_graphite
         b10_frac = 0.2 * self.boron_graphite
         b11_frac = 0.8 * self.boron_graphite
@@ -119,9 +119,9 @@ surf 2   hexxc  0.0 0.0 {self.l}  % reflective unit cell boundary
 %  DENSITY: 1.80 G/CC
 mat graphite -{self.grdens} moder graph 6000 tms {self.grtempK}
 rgb 130 130 130
-6000.{gr_lib} {gr_frac}
-5010.{gr_lib} {b10_frac} % boron impirity eq.
-5011.{gr_lib} {b11_frac}
+6000.{self.gr_lib} {gr_frac}
+5010.{self.gr_lib} {b10_frac} % boron impirity eq.
+5011.{self.gr_lib} {b11_frac}
 %  THERMAL SCATTERING LIBRARY FOR GRAPHITE
 therm graph 0 gre7.18t gre7.20t gre7.22t
 '''
@@ -161,7 +161,7 @@ set title "MSR lattice cell, l {self.l}, sf {self.sf}, salt {self.salt_formula},
 '''
         deck += self.get_surfaces()
         deck += self.get_cells()
-        deck += self.s.serpent_mat(self.fs_tempK, self.mat_tempK)
+        deck += self.s.serpent_mat(self.fs_tempK, self.mat_tempK, self.lib)
         deck += self.get_graphite()
         deck += self.get_data_cards()
         return deck.format(**locals())
