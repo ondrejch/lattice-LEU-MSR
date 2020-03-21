@@ -18,6 +18,7 @@ GRAPHITE_RHO:float = 1.80     # Graphite density at 950 K [g/cm3]
 FB_BASE_TEMP:float = 900.0    # Base temperature for feedbacks [K]
 FB_TEMPS      = [800.0, 850.0, 900.0, 950.0, 1000.0]  # Temps [K] for feedback calculations
 SLEEP_SEC:int = 30        # Sleep timer between results read attempts [s]
+FEEDBACKS = ['fs.dopp', 'fs.void', 'fs.both', 'gr.dopp']
 
 def graphite_linear_expansion(l0:float=100, tempK:float=950.0):
     'Return new lenght based on graphite thermal expansion'
@@ -45,27 +46,31 @@ class Feedbacks(object):
         self.alpha     = {}        # Temperature-reactivity feedbacks
         self.force_recalc:bool = False  # Force recalculation of existing data
 
-    def run_salt_feedback(self, feedback:str="fs.dopp"):
+    def run_feedback(self, feedback:str="fs.dopp"):
         '''Run all salt feedback cases:
             fs.dopp - Fuel salt Doppler
             fs.void - Fuel salt Void
             fs.both - Fuel salt Doppler + void
-            gr.dopp -
+            gr.dopp - Graphite Doppler
             fs.gr
         '''
         for t in FB_TEMPS:
             fb_lat_name = feedback + "."  + str("%04.0f" % t)
             self.fb_lats[fb_lat_name] = Lattice(self.salt, self.sf, self.l, self.e)
             mylat           = self.fb_lats[fb_lat_name]   # Shorthand
-            if   feedback == "fs.dopp":           # Doppler
+            if   feedback == "fs.dopp":      # Salt Doppler
                 mylat.tempK     = FB_BASE_TEMP
                 mylat.mat_tempK = t
-            elif feedback == "fs.void":      # Void
+            elif feedback == "fs.void":      # Salt Void
                 mylat.tempK     = t
                 mylat.mat_tempK = FB_BASE_TEMP
-            elif feedback == "fs.both":      # Void + Doppler
+            elif feedback == "fs.both":      # Salt Void + Doppler
                 mylat.tempK     = t
                 mylat.mat_tempK = t
+            elif feedback == "gr.dopp":
+                mylat.tempK     = FB_BASE_TEMP
+                mylat.mat_tempK = FB_BASE_TEMP
+                mylat.grtempK   = t + 50.0
             else:
                 raise ValueError("Feedback " + feedback + " not implemented!")
             if t == FB_BASE_TEMP:   # Base case
@@ -74,6 +79,8 @@ class Feedbacks(object):
                 mylat.set_path_from_geometry(fb_lat_name)
             if mylat.mat_tempK < 900.0:     # TODO this should be fixed if we generalize
                 mylat.lib = '06c'           # nuclear data libraries
+            if mylat.grtempK < 900.0:
+                mylat.grtempK = '06c'
             if my_debug:
                 print(mylat.deck_path)
             if self.force_recalc or not mylat.get_calculated_values():
@@ -81,8 +88,8 @@ class Feedbacks(object):
                 mylat.save_deck()
                 mylat.run_deck()
 
-    def read_fb(self, feedback:str="fs.dopp"):
-        '''Read salt Doppler data'''
+    def read_feedback(self, feedback:str="fs.dopp"):
+        '''Read feedback data and fit reactivity coefficients'''
         while True:     # Wait for all cases to finish
             is_done = True
             for t in FB_TEMPS:
@@ -111,6 +118,8 @@ if __name__ == '__main__':
     print("This module finds lattice feedbacks.")
 #    input("Press Ctrl+C to quit, or enter else to test it.")
     f = Feedbacks()
-    f.run_salt_feedback()
-    f.read_fb()
+    for fb in FEEDBACKS:
+        f.run_feedback(fb)
+    for fb in FEEDBACKS:
+        f.read_feedback(fb)
 
