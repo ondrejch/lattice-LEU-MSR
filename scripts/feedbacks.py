@@ -7,6 +7,7 @@
 # GNU/GPL
 
 import time
+import numpy as np
 from lattice import Lattice
 from converge import rho
 
@@ -34,20 +35,23 @@ class Feedbacks(object):
     '''Calcualte reactivity coefficients of a lattice'''
     def __init__(self, salt:str='flibe', sf:float=0.1, l:float=20.0, e:float=0.015):
         'Constructor with default values'
-        self.salt:str       = salt      # Salt key
-        self.sf:float       = sf        # Fuel salt fraction
-        self.l:float        = l         # Hex lattice size [cm]
-        self.e:float        = e         # Fuel salt enrichment
-        self.fb_lats        = {}        # Lattice objects for feedback calculations
-#        self.fs_dopp        = None
-#        self.fs
+        self.salt:str  = salt      # Salt key
+        self.sf:float  = sf        # Fuel salt fraction
+        self.l:float   = l         # Hex lattice size [cm]
+        self.e:float   = e         # Fuel salt enrichment
+        self.fb_lats   = {}        # Lattice objects for feedback calculations
+        self.fb_rhos   = {}        # Reactivities
+#        self.fb_rhos_err = {}        # Reactivity sigmas - irrelevant since we run the same statistiscs
+        self.alpha     = {}        # Temperature-reactivity feedbacks
         self.force_recalc:bool = False  # Force recalculation of existing data
 
     def run_salt_feedback(self, feedback:str="fs.dopp"):
         '''Run all salt feedback cases:
-            fs.dopp - Doppler
-            fs.void - Void
-            fs.both - Doppler + void
+            fs.dopp - Fuel salt Doppler
+            fs.void - Fuel salt Void
+            fs.both - Fuel salt Doppler + void
+            gr.dopp -
+            fs.gr
         '''
         for t in FB_TEMPS:
             fb_lat_name = feedback + "."  + str("%04.0f" % t)
@@ -68,7 +72,7 @@ class Feedbacks(object):
                 mylat.set_path_from_geometry()
             else:                   # Feedback cases
                 mylat.set_path_from_geometry(fb_lat_name)
-            if mylat.mat_tempK < 900.0:     # TODO this should be fixed if we generalize 
+            if mylat.mat_tempK < 900.0:     # TODO this should be fixed if we generalize
                 mylat.lib = '06c'           # nuclear data libraries
             if my_debug:
                 print(mylat.deck_path)
@@ -89,8 +93,17 @@ class Feedbacks(object):
                 break
             if my_debug:
                 print("[DEBUG RF] sleeping ...")
-            time.sleep(SLEEP_SEC)  # Wait a minute for Serpent ...
+            time.sleep(SLEEP_SEC)           # Wait a minute for Serpent ...
 
+        self.fb_rhos[feedback] = []         # Add reactivities as a list
+#        self.fb_rhos_err[feedback] = []
+        for t in FB_TEMPS:
+            fb_lat_name = feedback + "."  + str("%04.0f" % t)
+            self.fb_rhos[feedback].append(rho(self.fb_lats[fb_lat_name].k))
+#            self.fb_rhos_err[feedback].append(self.fb_lats[fb_lat_name].kerr) # We ignore sigmas, same statistics for all cases
+#        w=[1./abs(r*e) for r, e in zip(f.fb_rhos[feedback],f.fb_rhos_err[feedback])]
+        (slope, intercept) = np.polyfit(FB_TEMPS, f.fb_rhos[feedback], 1)
+        self.alpha[feedback] = slope
 
 
 # ------------------------------------------------------------
@@ -100,4 +113,4 @@ if __name__ == '__main__':
     f = Feedbacks()
     f.run_salt_feedback()
     f.read_fb()
-    
+
