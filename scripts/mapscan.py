@@ -51,7 +51,8 @@ class ScanFeedbacks(object):
         'Constructor, expects a list of ConvergedPoints, ScanConverge:data'
         self.convpoints  = converged_points
         self.fb_list     = []           # List of feedback objects
-        self.max_threads = 10           # Lattices to run simultaneously
+        self.max_threads:int = 10       # Lattices to run simultaneously
+        self.sleep_timer:float = 0.1    # Sleep bethween threads [s]
 
     def calcualte_feedbacks(self, fb_lat) -> float:
         'Calculates feedbacks for fb_lat'
@@ -71,7 +72,7 @@ class ScanFeedbacks(object):
                     self.fb_list.append(feedbacks.Feedbacks(d.salt, d.sf, d.l, d.enr))
                     future = executor.submit(self.calcualte_feedbacks, self.fb_list[-1])
                     to_do.append(future)
-                    time.sleep(0.1)
+                    time.sleep(self.sleep_timer)
             for future in futures.as_completed(to_do):
                 res = future.result()
                 if my_debug:
@@ -135,7 +136,8 @@ class ScanConverge(object):
             self.l_list = l_list
         else:
             self.l_list = LATTICE_PITCHES
-        self.max_threads = 50       # Convergences to run simultaneously
+        self.max_threads:int   = 50     # Convergences to run simultaneously
+        self.sleep_timer:float = 0.1    # Sleep bethween threads [s]
 
         # Increase convergence by using old values to start the regula falsi search
         # https://stackoverflow.com/questions/29974122/interpolating-data-from-a-look-up-table#30057858
@@ -207,7 +209,7 @@ class ScanConverge(object):
                         self.conv_list.append(converge.Converge(self.salt, sf, l))   # Each point is a class on a list
                         future = executor.submit(self.doconverge,self.conv_list[-1]) # -1: last on the list
                         to_do.append(future)
-                        time.sleep(0.5)
+                        time.sleep(self.sleep_timer)
 
             for future in futures.as_completed(to_do):
                 res = future.result()
