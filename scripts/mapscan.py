@@ -51,8 +51,9 @@ class ScanFeedbacks(object):
         'Constructor, expects a list of ConvergedPoints, ScanConverge:data'
         self.convpoints  = converged_points
         self.fb_list     = []           # List of feedback objects
-        self.max_threads = 10           # Lattices to run simultaneously
-    
+        self.max_threads:int = 10       # Lattices to run simultaneously
+        self.sleep_timer:float = 0.1    # Sleep bethween threads [s]
+
     def calcualte_feedbacks(self, fb_lat) -> float:
         'Calculates feedbacks for fb_lat'
         tl = threading.local()          # Prevent threads overwriting each others data
@@ -61,7 +62,7 @@ class ScanFeedbacks(object):
         for tl.fb in feedbacks.FEEDBACK_TYPES:
             fb_lat.read_feedback(tl.fb) # Calculates \alphas
         return fb_lat.alpha['all']
-    
+
     def runscan(self):
         'Threaded feedback calculation'
         with futures.ThreadPoolExecutor(max_workers=self.max_threads) as executor:
@@ -71,12 +72,48 @@ class ScanFeedbacks(object):
                     self.fb_list.append(feedbacks.Feedbacks(d.salt, d.sf, d.l, d.enr))
                     future = executor.submit(self.calcualte_feedbacks, self.fb_list[-1])
                     to_do.append(future)
-                    time.sleep(0.1)
+                    time.sleep(self.sleep_timer)
             for future in futures.as_completed(to_do):
                 res = future.result()
                 if my_debug:
                     msg = '{} result: {!r}'
                     print(msg.format(future, res))
+
+    def save_fbdata(self, savefile=None) -> bool:
+        'Save as a large TSV table'
+        if not self.convpoints or not self.fb_list:
+            print("ERROR: No data to save!")
+            return False
+        if not savefile:
+            # Get the first lattice in first feedback object ..
+            savefile = list(self.fb_list[0].fb_lats.values())[0].main_path + "_feedbacks.dat"
+        try:
+            fh = open(savefile, 'w')
+            fh.write(self.get_savefile_header())
+            for d in self.fb_list:
+                fh.write("%8.6f\t%8.5f\t%14.12f" % (d.sf, d.l, d.enr ) )
+                for fb in feedbacks.FEEDBACK_TYPES:
+                    fh.write("\t%9.6f" % d.alpha[fb])
+                    for rho in d.fb_rhos[fb]:
+                        fh.write("\t%8.4f" % rho)
+                fh.write("\n")
+            fh.close()
+            return True
+        except IOError as e:
+            print("[ERROR] Unable to write to file: ", \
+                  savefile)
+            print(e)
+            return False
+
+    def get_savefile_header(self) -> str:
+        'Header for feedback savefile'
+        header:str = "# sf\tl\tenr"
+        for fb in feedbacks.FEEDBACK_TYPES:
+            header += "\talpha_" + fb
+            for t in feedbacks.FB_TEMPS:
+                header += "\trho_" + str("%04.0f" % t)
+        header += "\n"
+        return header
 
 
 class ScanConverge(object):
@@ -99,7 +136,8 @@ class ScanConverge(object):
             self.l_list = l_list
         else:
             self.l_list = LATTICE_PITCHES
-        self.max_threads = 50       # Convergences to run simultaneously
+        self.max_threads:int   = 50     # Convergences to run simultaneously
+        self.sleep_timer:float = 0.1    # Sleep bethween threads [s]
 
         # Increase convergence by using old values to start the regula falsi search
         # https://stackoverflow.com/questions/29974122/interpolating-data-from-a-look-up-table#30057858
@@ -171,7 +209,7 @@ class ScanConverge(object):
                         self.conv_list.append(converge.Converge(self.salt, sf, l))   # Each point is a class on a list
                         future = executor.submit(self.doconverge,self.conv_list[-1]) # -1: last on the list
                         to_do.append(future)
-                        time.sleep(0.5)
+                        time.sleep(self.sleep_timer)
 
             for future in futures.as_completed(to_do):
                 res = future.result()
@@ -240,7 +278,14 @@ class ScanConverge(object):
 if __name__ == '__main__':
     print("This module handles phase space scanning.")
     input("Press Ctrl+C to quit, or enter else to test it.")
-    m = ScanConverge()
-    m.read_data()
-    m.runscan()
-    m.save_data()
+    # Converge all lattices
+    myconv = ScanConverge()
+    myconv.read_data()
+    #myconv.runscan()
+    #myconv.save_data()
+
+    # Find temperature reactivity feedbacks for all lattices
+    myfbs = mapscan.ScanFeedbacks(myconv.data)
+    myfbs.runscan()
+    myfbs.save_fbdata()
+

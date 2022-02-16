@@ -210,7 +210,7 @@ class Salt(object):
     def densityC(self, tempC:float) -> float:
         'Returns density [g/cm3] based on temperature in degC'
         if 'UCl' in self.formula:   # Chlorides handled separately, no molar volumes available
-            return self.chloride_density(tempC)
+            return self.chloride_densityC(tempC)
         if density_warn and (tempC < 600 or tempC > 800):
             print("Warning: temperature data is interpolated between 600 and 800C.")
         if not self.density_a or not self.density_b:

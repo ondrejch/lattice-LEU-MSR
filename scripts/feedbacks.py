@@ -35,7 +35,7 @@ def graphite_density_expansion(tempK:float=950.0):
 
 
 class Feedbacks(object):
-    '''Calcualte reactivity coefficients of a lattice'''
+    '''Calculate reactivity coefficients of a lattice'''
     def __init__(self, salt:str='flibe', sf:float=0.1, l:float=20.0, e:float=0.015):
         'Constructor with default values'
         self.salt:str  = salt      # Salt key
