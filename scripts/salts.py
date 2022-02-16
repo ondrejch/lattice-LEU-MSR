@@ -327,4 +327,5 @@ if __name__ == '__main__':
     print("--> Density [g/cm3] at 700C: ",s.densityC(700))
     print("--> Density [g/cm3] at 800K: ",s.densityK(800))
     print("--> Density [g/cm3] at 900K: ",s.densityK(900))
+    msresalt = Salts("65%LiF+29.1%BeF2+5%ZrF4+0.9%UF4", 0.33)
 
