@@ -316,6 +316,20 @@ class Salt(object):
             mat += "    %  "+ self.ELEMENTS[w.Z].symbol +"-"+ str(w.A) +"\n"
         return mat
 
+    def scale_mat(self, tempK:float=900.0, mat_tempK:float=900.0, mix_number=1):
+        '''Returns SCALE for the salt material
+        tempK is the temperature for density calculation,
+        mat_tempK is the material temperature.
+        This is useful for Doppler feedback calculations.'''
+        if not self.wflist:         # Generate list of isotopic weight fractions
+            self._isotopic_fractions()
+        Nele = len( set( [x.Z for x in self.wflist] ) ) # number of elements in the mixture
+        mat  = "' Fuel salt: " + self.nice_name() + ", U enrichment " + str(self.enr) + "\n"
+        for w in self.wflist:
+            mat += f"{self.ELEMENTS[w.Z].symbol}-{w.A} {mix_number} den={self.densityK(tempK)} {w.wf} {mat_tempK} end\n"
+        return mat
+
+
 # This executes if someone tries to run the module
 if __name__ == '__main__':
     print("This is a salt processing module.")
