@@ -71,7 +71,7 @@ class Salt(object):
 
         self.formula:str    = f         # Chemical formula for a salt
         self.enr:float      = e         # Uranium enrichment
-        self.Li7dep:float   = 0.99995   # Li-7 depletion level
+        self.Li7dep:float   = 0.99990   # Li-7 depletion level
         self.mol_mass:float = None      # Molar mass of the salt
         # Salt isotopic composition - isotopes repeat per melt parts
         self.isolist = []   # For internal processing use only
@@ -294,7 +294,7 @@ class Salt(object):
         return self.formula.replace('+',' + ')
 
     def serpent_mat(self, tempK:float=900.0, mat_tempK:float=900.0,
-                    lib="09c", rgb:str="240 30 30"):
+                    lib="09c", rgb:str="240 30 30", dens_mod=1.0)->str:
         '''Returns Serpent deck for the salt material
         tempK is the temperature for density calculation,
         mat_tempK is the material temperature.
@@ -312,21 +312,32 @@ class Salt(object):
         mat  = "% Fuel salt: " + self.nice_name() + ", U enrichment " + str(self.enr)
         mat += "\nmat fuelsalt %12.8f rgb %s burn 1 tmp %8.3f\n" % (-1.0*self.densityK(tempK),rgb,mat_tempK)
         for w in self.wflist:
-            mat += "%3d%03d.%s  %14.12f" % (w.Z, w.A, lib, -1.0*w.wf)
+            mat += "%3d%03d.%s  %14.12f" % (w.Z, w.A, lib, -1.0*w.wf*dens_mod)
             mat += "    %  "+ self.ELEMENTS[w.Z].symbol +"-"+ str(w.A) +"\n"
         return mat
 
-    def scale_mat(self, tempK:float=900.0, mat_tempK:float=900.0, mix_number=1):
-        '''Returns SCALE for the salt material
+    def mcnp_mat(self, tempK:float=900.0, mat_number=1, lib="09c", dens_mod=1.0)->str:
+        '''Returns MCNP deck for the salt material
+        tempK is the temperature for density calculation'''
+        if not self.wflist:         # Generate list of isotopic weight fractions
+            self._isotopic_fractions()
+        mat  = "C Fuel salt: " + self.nice_name() + ", U enrichment " + str(self.enr) + "\n"
+        mat += f"M{mat_number}\n"
+        for w in self.wflist:
+            mat += "       %3d%03d.%s  %14.12f\n" % (w.Z, w.A, lib, -1.0*w.wf*dens_mod)
+        return mat
+
+    def scale_mat(self, tempK:float=900.0, mat_tempK:float=900.0, mix_number=1, dens_mod=1.0)->str:
+        '''Returns SCALE deck for the fuel salt material.
         tempK is the temperature for density calculation,
-        mat_tempK is the material temperature.
-        This is useful for Doppler feedback calculations.'''
+        mat_tempK is the material temperature. This is useful for Doppler feedback calculations.
+        dens_mod is density modifier. '''
         if not self.wflist:         # Generate list of isotopic weight fractions
             self._isotopic_fractions()
         Nele = len( set( [x.Z for x in self.wflist] ) ) # number of elements in the mixture
         mat  = "' Fuel salt: " + self.nice_name() + ", U enrichment " + str(self.enr) + "\n"
         for w in self.wflist:
-            mat += f"{self.ELEMENTS[w.Z].symbol}-{w.A} {mix_number} den={self.densityK(tempK)} {w.wf} {mat_tempK} end\n"
+            mat += f"{self.ELEMENTS[w.Z].symbol}-{w.A} {mix_number} den={self.densityK(tempK)*dens_mod} {w.wf} {mat_tempK} end\n"
         return mat
 
 
@@ -341,5 +352,4 @@ if __name__ == '__main__':
     print("--> Density [g/cm3] at 700C: ",s.densityC(700))
     print("--> Density [g/cm3] at 800K: ",s.densityK(800))
     print("--> Density [g/cm3] at 900K: ",s.densityK(900))
-    msresalt = Salts("65%LiF+29.1%BeF2+5%ZrF4+0.9%UF4", 0.33)
 
